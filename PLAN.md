@@ -9,13 +9,13 @@ Open the app once a day, say one honest word, and discover what is resonating wi
 1. A person can post one word per local calendar day.
 2. Today, World, and You remain locked until today's word is posted.
 3. Echoes are anonymous. The word owner sees a total, never a list of people.
-4. Only the first page of Today is Echoable. The product should feel complete after a few minutes.
+4. Only the eight cards on Today are Echoable. The product should feel complete after a few minutes.
 5. Friends are a filter inside Today, not a separate main tab.
 6. A friend who chose the exact same word gets a mint border and does not need an Echo action.
 
 ## Mobile navigation
 
-- **Today:** Twelve two-column cards. Toggle between the most Echoed words and friends' words.
+- **Today:** Eight two-column cards. Toggle between the most Echoed words and friends' words. A single tap Echoes a word, and XP remains visible beside the daily participation count.
 - **World:** Geographic patterns at World, Israel, and Nearby scale. Keep the current concept until the visualization is redesigned to avoid overlapping labels.
 - **You:** Streak, XP, level, daily word history, and the story formed by past words. Keep the current concept until its full redesign.
 

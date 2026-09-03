@@ -7,9 +7,9 @@ One word a day. See what resonates.
 ## Current prototype
 
 - One-word daily posting flow with a confirmation step
-- Today feed with 12 two-column word cards
+- Today feed with 8 two-column word cards
 - Top Today and Friends views
-- Anonymous Echo interactions by double-tap
+- Anonymous Echo interactions by a single tap
 - World map and rewind concept
 - Personal word diary and streak concept
 - Local browser persistence while the shared backend is connected

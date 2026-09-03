@@ -1,7 +1,6 @@
 'use client';
 
-import { FormEvent, useEffect, useRef, useState } from 'react';
-import type { KeyboardEvent } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import {
   ChevronRight, CircleUserRound, Flame, Globe2, Lock, MapPin,
   Sparkles, Sun, Waves,
@@ -62,8 +61,17 @@ const wordSets: Record<Scope, { word: string; count: number; coordinates: [numbe
     { word: 'COFFEE', count: 534, coordinates: [34.81, 32.10], size: 'map-lg' },
     { word: 'WORK', count: 413, coordinates: [34.77, 32.05], size: 'map-md' },
     { word: 'SEA', count: 288, coordinates: [34.75, 32.09], size: 'map-sm' },
+    { word: 'HOME', count: 244, coordinates: [34.79, 32.07], size: 'map-md' },
+    { word: 'HOT', count: 191, coordinates: [34.76, 32.11], size: 'map-sm' },
+    { word: 'BABY', count: 152, coordinates: [34.80, 32.06], size: 'map-sm' },
+    { word: 'CALM', count: 141, coordinates: [34.74, 32.08], size: 'map-sm' },
   ],
 };
+
+const nearbyPositions = [
+  ['27%', '12%'], ['74%', '21%'], ['22%', '38%'], ['70%', '43%'],
+  ['30%', '60%'], ['75%', '64%'], ['24%', '82%'], ['69%', '84%'],
+] as const;
 
 const diary = [
   ['02', 'TODAY'], ['01', 'HOME'], ['31', 'GEMS'], ['30', 'FAMILY'],
@@ -85,25 +93,10 @@ function BrandHeader({ submitted }: { submitted: string }) {
   return <header className="cozy-header">{submitted ? <div className="your-word-header"><strong>{submitted}</strong><span><Waves />{anonymousEchoes}</span></div> : <div className="cozy-logo">wurd</div>}<p>{todayLabel()}</p></header>;
 }
 
-function useDoubleTap(onEcho: () => void) {
-  const lastTap = useRef(0);
-  return {
-    onClick: () => {
-      const now = Date.now();
-      if (now - lastTap.current < 360) { onEcho(); lastTap.current = 0; }
-      else lastTap.current = now;
-    },
-    onKeyDown: (event: KeyboardEvent) => {
-      if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onEcho(); }
-    },
-  };
-}
-
 function LiveCard({ person, echoed, onEcho }: { person: typeof livePeople[number]; echoed: boolean; onEcho: () => void }) {
   const [name, initials, word, city, time, color, count] = person;
-  const tapProps = useDoubleTap(onEcho);
   return (
-    <button className={`live-card ${echoed ? 'echoed' : ''}`} aria-pressed={echoed} aria-label={`${name} chose ${word}. Double tap to echo.`} {...tapProps}>
+    <button className={`live-card ${echoed ? 'echoed' : ''}`} aria-pressed={echoed} aria-label={`${name} chose ${word}. Tap to echo.`} onClick={onEcho}>
       <div className="live-person"><Avatar><AvatarFallback style={{ background: color }}>{initials}</AvatarFallback></Avatar><span><strong>{name}</strong><small>{city} · {time}</small></span></div>
       <strong className="live-word">{word}</strong>
       <span className="echo-count"><Waves />{count + (echoed ? 1 : 0)}</span>
@@ -128,13 +121,13 @@ function TodayTab({ submitted, setSubmitted, echoed, toggleEcho }: { submitted: 
       <div className="confirm-word"><span>YOUR WORD FOR {todayLabel().toUpperCase()}</span><h2>{pending}</h2><p>This is the only word you can post today. At midnight, you&apos;ll get a new one.</p><div><Button variant="outline" onClick={() => setPending('')}>Go back</Button><Button onClick={() => setSubmitted(pending)}>Post my word</Button></div></div>}
     </div></section>
   );
-  const topPeople = [...livePeople].sort((left, right) => right[6] - left[6]).slice(0, 12);
+  const topPeople = [...livePeople].sort((left, right) => right[6] - left[6]).slice(0, 8);
+  const xp = 852 + echoed.length;
   return (
     <section className="tab-view live-view">
       <div className="today-mode cozy-segments"><button className={feedMode === 'Top today' ? 'active' : ''} onClick={() => setFeedMode('Top today')}>Top today</button><button className={feedMode === 'Friends' ? 'active' : ''} onClick={() => setFeedMode('Friends')}>Friends</button></div>
+      <div className="today-status"><span><i />1,284 spoke</span><span className="today-xp"><Sparkles /><strong>{xp} XP</strong><small>LEVEL 4</small></span></div>
       {feedMode === 'Top today' ? <>
-        <div className="live-heading"><div><span><i /> LIVE TODAY</span><h1>Top echoed</h1><p>The twelve words resonating most right now.</p></div><b>1,284 spoke</b></div>
-        <div className="echo-hint"><Waves /><span><strong>Double-tap a card to Echo it.</strong></span></div>
         <div className="live-grid">{topPeople.map((person, index) => <LiveCard key={`${person[0]}-${person[2]}`} person={person} echoed={echoed.includes(`live-${index}`)} onEcho={() => toggleEcho(`live-${index}`)} />)}</div>
       </> : <>
         <div className="view-title inline-friends-title"><div><span>YOUR FRIENDS</span><h1>Your people<br />today</h1></div><b>8 of 12 spoke</b></div>
@@ -145,18 +138,24 @@ function TodayTab({ submitted, setSubmitted, echoed, toggleEcho }: { submitted: 
 }
 
 function FriendCard({ friend, match, echoed, onEcho }: { friend: typeof friends[number]; match: boolean; echoed: boolean; onEcho: () => void }) {
-  const tapProps = useDoubleTap(onEcho);
   const content = <><div className="live-person"><Avatar><AvatarFallback style={{ background: friend.color }}>{friend.initials}</AvatarFallback></Avatar><span><strong>{friend.name}</strong><small>{friendCities[friend.id]} · {friend.time} ago</small></span></div><strong className="live-word">{friend.word}</strong>{match && <span className="same-word-label"><Sparkles /> Same word</span>}<span className="echo-count"><Waves />{friend.echoes + (echoed ? 1 : 0)}</span></>;
   if (match) return <article className="live-card friend-square exact-match" aria-label={`${friend.name} chose the same word as you`}>{content}</article>;
-  return <button className={`live-card friend-square ${echoed ? 'echoed' : ''}`} aria-pressed={echoed} aria-label={`${friend.name} chose ${friend.word}. Double tap to echo.`} {...tapProps}>{content}</button>;
+  return <button className={`live-card friend-square ${echoed ? 'echoed' : ''}`} aria-pressed={echoed} aria-label={`${friend.name} chose ${friend.word}. Tap to echo.`} onClick={onEcho}>{content}</button>;
 }
 
 function WorldMap({ scope }: { scope: Scope }) {
+  if (scope === 'Nearby') return (
+    <div className="nearby-cloud" aria-label="Words near you today">
+      {wordSets.Nearby.map((item, index) => <div className={`nearby-word nearby-${index + 1}`} style={{ left: nearbyPositions[index][0], top: nearbyPositions[index][1] }} key={item.word}>
+        <strong>{item.word}</strong><span><i />{item.count.toLocaleString()}</span>
+      </div>)}
+    </div>
+  );
   const width = 700;
   const height = 360;
   const projection = scope === 'World'
     ? geoNaturalEarth1().fitExtent([[12, 12], [width - 12, height - 12]], worldGeo)
-    : geoMercator().center([34.82, 31.9]).scale(scope === 'Israel' ? 5200 : 24000).translate([width / 2, height / 2]);
+    : geoMercator().center([34.82, 31.9]).scale(5200).translate([width / 2, height / 2]);
   const makePath = geoPath(projection);
   return (
     <div className="real-map">
