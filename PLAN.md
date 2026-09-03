@@ -7,7 +7,7 @@ Open the app once a day, say one honest word, and discover what is resonating wi
 ## Core rules
 
 1. A person can post one word per local calendar day.
-2. Today, World, and You remain locked until today's word is posted.
+2. The full Today feed and World remain locked until today's word is posted. You is always available.
 3. Echoes are anonymous. The word owner sees a total, never a list of people.
 4. Only the eight cards on Today are Echoable. The product should feel complete after a few minutes.
 5. Friends are a filter inside Today, not a separate main tab.

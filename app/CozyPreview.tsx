@@ -245,7 +245,7 @@ export default function CozyPreview() {
       {tab === 'world' && <WorldTab />}
       {tab === 'you' && <YouTab submitted={submitted} reset={reset} />}
     </div><nav className="cozy-nav" aria-label="App navigation">{tabs.map(item => {
-      const locked = !submitted && item.id !== 'today';
+      const locked = !submitted && item.id === 'world';
       return <button key={item.id} className={`${tab === item.id ? 'active' : ''} ${locked ? 'locked' : ''}`} disabled={locked} title={locked ? 'Post today’s word to unlock' : item.label} onClick={() => setTab(item.id)}><item.icon />{locked && <Lock className="nav-lock" />}<span>{item.label}</span></button>;
     })}</nav></section></main>
   );
