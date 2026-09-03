@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import {
   CircleUserRound, Flame, Globe2, Lock, MapPin,
-  Sun, Waves,
+  Sparkles, Sun, Waves,
 } from 'lucide-react';
 import { geoMercator, geoNaturalEarth1, geoPath } from 'd3-geo';
 import { feature } from 'topojson-client';
