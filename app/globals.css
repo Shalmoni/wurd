@@ -734,3 +734,32 @@ html, body, #root { height: 100%; overflow: hidden; overscroll-behavior: none; }
   .diary-day-card > b { font-size: clamp(16px, 4.8vw, 21px); }
   .diary-day-card > small { font-size: 11px; }
 }
+
+/* Final XP order: XP · total · multiplier · progress · streak. */
+.header-xp > .xp-label {
+  display: block;
+  flex: 0 0 auto;
+  color: #008e5c;
+  font-size: 8px;
+  font-weight: 850;
+  letter-spacing: .05em;
+}
+.header-xp > strong { font-size: 11px; }
+.header-xp > em { order: initial; font-size: 9px; }
+.header-xp > .xp-bar {
+  min-width: 36px;
+  height: 6px;
+  flex: 1 1 62px;
+  margin: 0;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #ccecdf;
+}
+.header-xp > .xp-bar > b {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #00b979, #00e695);
+}
+.header-xp > .xp-streak { flex: 0 0 auto; font-size: 9px; }
+.header-xp > .xp-streak svg { width: 11px; height: 11px; }

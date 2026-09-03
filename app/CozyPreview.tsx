@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import {
   CircleUserRound, Flame, Globe2, Lock, MapPin,
-  Sparkles, Sun, Waves,
+  Sun, Waves,
 } from 'lucide-react';
 import { geoMercator, geoNaturalEarth1, geoPath } from 'd3-geo';
 import { feature } from 'topojson-client';
@@ -95,7 +95,7 @@ function BrandHeader({ submitted, xp }: { submitted: string; xp: number }) {
   const levelProgress = Math.min(100, Math.max(0, (xp - 600) / 4));
   if (submitted) return (
     <header className="today-app-header">
-      <div className="today-brand-row"><div className="today-brand">WURD</div><div className="header-xp"><Sparkles /><strong>{xp} XP</strong><span className="xp-level"><small>L4</small><i><b style={{ width: `${levelProgress}%` }} /></i></span><span className="xp-streak"><Flame />12</span><em>1.2×</em></div></div>
+      <div className="today-brand-row"><div className="today-brand">WURD</div><div className="header-xp"><span className="xp-label">XP</span><strong>{xp}</strong><em>1.2×</em><i className="xp-bar"><b style={{ width: `${levelProgress}%` }} /></i><span className="xp-streak"><Flame />12</span></div></div>
       <strong className="today-word">{submitted}</strong>
       <div className="today-meta-row"><p>{todayLabel()}</p><span><Waves />{anonymousEchoes}</span></div>
     </header>
