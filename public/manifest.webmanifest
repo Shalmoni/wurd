@@ -1,0 +1,17 @@
+{
+  "name": "wurd",
+  "short_name": "wurd",
+  "description": "One word a day. See what resonates.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#00E695",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
