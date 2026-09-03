@@ -699,7 +699,9 @@ html, body, #root { height: 100%; overflow: hidden; overscroll-behavior: none; }
   scroll-snap-align: start;
 }
 .diary-day-card > span { grid-column: 1; grid-row: 1; font-size: 10px; }
-.diary-day-card > strong { grid-column: 1; grid-row: 2 / 4; align-self: center; margin: 0; font-size: 32px; }
+.diary-day-card > .day-date { grid-column: 1; grid-row: 2 / 4; align-self: center; display: flex; flex-direction: column; align-items: flex-start; }
+.diary-day-card > .day-date i { margin-bottom: 2px; color: #7b8c84; font-size: 10px; font-style: normal; font-weight: 750; }
+.diary-day-card > .day-date strong { font: 700 32px Georgia, 'Times New Roman', serif; }
 .diary-day-card > b {
   grid-column: 2;
   grid-row: 1 / 4;
@@ -728,7 +730,7 @@ html, body, #root { height: 100%; overflow: hidden; overscroll-behavior: none; }
   .fixed-app.active-you .calendar-head { flex-basis: 38px; margin-top: 4px; margin-bottom: 4px; }
   .diary-day-card { min-height: 98px; flex-basis: 98px; padding: 10px 12px; }
   .diary-day-card > span { display: block; font-size: 9px; }
-  .diary-day-card > strong { font-size: 27px; }
+  .diary-day-card > .day-date strong { font-size: 27px; }
   .diary-day-card > b { font-size: clamp(16px, 4.8vw, 21px); }
   .diary-day-card > small { font-size: 11px; }
 }

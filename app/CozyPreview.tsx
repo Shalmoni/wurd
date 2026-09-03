@@ -200,11 +200,12 @@ function YouTab({ submitted }: { submitted: string }) {
   }, []);
   return (
     <section className="tab-view you-view"><div className="profile-cozy profile-simple"><div className="profile-ring"><span>OS</span></div><div><span>YOUR ONE-WORD DIARY</span><h1>Otsar</h1><p><MapPin /> Tel Aviv</p></div></div>
-      <div className="calendar-head"><div><span>YOUR WORD CALENDAR</span><h2>Your last 14 days</h2></div><small>SWIPE DAYS ↑</small></div>
+      <div className="calendar-head"><div><h2>Your last 14 days</h2></div><small>SWIPE DAYS ↑</small></div>
       <div className="day-ribbon" ref={dayTrack} aria-label="Your words from the last 14 days">{wordDays.map(([weekday, date, storedWord, echoes], index) => {
         const isToday = index === wordDays.length - 1;
         const word = isToday ? submitted : storedWord;
-        return <article className={`diary-day-card ${isToday ? 'is-today' : ''}`} key={`${weekday}-${date}`}><span>{weekday}</span><strong>{date}</strong><b>{word}</b><small><Waves />{isToday ? 37 + submitted.length * 11 : echoes}</small>{isToday && <em>TODAY</em>}</article>;
+        const month = index < wordDays.length - 2 ? 'Aug' : 'Sep';
+        return <article className={`diary-day-card ${isToday ? 'is-today' : ''}`} key={`${weekday}-${date}`}><span>{weekday}</span><div className="day-date"><i>{month}</i><strong>{date}</strong></div><b>{word}</b><small><Waves />{isToday ? 37 + submitted.length * 11 : echoes}</small>{isToday && <em>TODAY</em>}</article>;
       })}</div>
     </section>
   );
