@@ -520,3 +520,96 @@ html, body, #root { height: 100%; overflow: hidden; overscroll-behavior: none; }
   .fixed-app.active-you .day-cell > strong { margin-top: 2px; font-size: 15px; }
   .fixed-app.active-you .day-cell > b { margin-bottom: 3px; font-size: 10px; }
 }
+
+/* Universal app header: XP, streak and multiplier travel with the user. */
+.header-xp { padding: 7px 11px; }
+.header-xp > span > em {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+  color: #60786e;
+  font-size: 6px;
+  font-style: normal;
+  font-weight: 750;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.header-xp > span > em svg { width: 8px; height: 8px; color: #00b979; fill: #00e695; }
+.header-xp > span > em b { margin-left: auto; color: #00a86d; font-size: 7px; }
+.header-xp > span > i { margin-top: 3px; }
+
+/* You is the diary: identity first, then a readable 14-day horizontal story. */
+.fixed-app.active-you .profile-simple {
+  flex-basis: 68px;
+  padding: 3px 2px 8px;
+  border-bottom: 0;
+}
+.fixed-app.active-you .profile-ring::after { top: 1px; right: 1px; }
+.fixed-app.active-you .calendar-head {
+  flex-basis: 50px;
+  margin: 7px 2px 9px;
+  padding-top: 7px;
+  border-top: 1px solid #e7f0ec;
+}
+.fixed-app.active-you .day-ribbon {
+  min-height: 0;
+  flex: 1 1 auto;
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 1px 1px 4px;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: 1px;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x;
+}
+.fixed-app.active-you .day-ribbon::-webkit-scrollbar { display: none; }
+.diary-day-card {
+  min-width: clamp(112px, 29vw, 148px);
+  flex: 0 0 clamp(112px, 29vw, 148px);
+  min-height: 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 14px 12px;
+  overflow: hidden;
+  border: 1px solid #dfece7;
+  border-radius: 19px;
+  background: linear-gradient(165deg, #ffffff, #f9fdfb);
+  scroll-snap-align: start;
+}
+.diary-day-card > span { color: #7b8c84; font-size: 7px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
+.diary-day-card > strong { margin-top: 7px; font: 700 25px Georgia, 'Times New Roman', serif; }
+.diary-day-card > b {
+  margin: auto 0;
+  overflow-wrap: anywhere;
+  color: #00a86d;
+  font-size: clamp(17px, 4.6vw, 23px);
+  line-height: .9;
+  letter-spacing: -.06em;
+}
+.diary-day-card > small { display: flex; align-items: center; gap: 5px; color: #667a71; font-size: 9px; font-weight: 700; }
+.diary-day-card > small svg { width: 12px; height: 12px; color: #00b979; }
+.diary-day-card > em { position: absolute; right: 9px; top: 11px; color: #00a86d; font-size: 6px; font-style: normal; font-weight: 850; letter-spacing: .08em; }
+.diary-day-card.is-today { border: 2px solid #00e695; background: linear-gradient(165deg, #f1fff9, #ffffff); box-shadow: 0 8px 22px rgba(0,201,130,.10); }
+
+@media (max-width: 620px) {
+  .header-xp { padding: 6px 9px; }
+  .fixed-app.active-you .profile-simple { grid-template-columns: 56px 1fr; }
+  .fixed-app.active-you .calendar-head h2 { font-size: 20px; }
+}
+
+@media (max-height: 700px) {
+  .header-xp { padding: 4px 8px; }
+  .header-xp > span > em { font-size: 5px; }
+  .fixed-app.active-you .profile-simple { flex-basis: 55px; }
+  .fixed-app.active-you .calendar-head { flex-basis: 40px; margin-top: 3px; margin-bottom: 5px; padding-top: 4px; }
+  .fixed-app.active-you .calendar-head h2 { font-size: 17px; }
+  .diary-day-card { padding: 10px 9px; border-radius: 16px; }
+  .diary-day-card > strong { margin-top: 4px; font-size: 20px; }
+  .diary-day-card > b { font-size: 16px; }
+}

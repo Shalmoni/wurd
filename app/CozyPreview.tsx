@@ -73,28 +73,11 @@ const nearbyPositions = [
   ['30%', '60%'], ['75%', '64%'], ['24%', '82%'], ['69%', '84%'],
 ] as const;
 
-const calendarWeeks = [
-  {
-    label: 'August 23–29',
-    days: [
-      ['Sunday', '23', 'SLOW', 6], ['Monday', '24', 'WORK', 14], ['Tuesday', '25', 'OPEN', 9], ['Wednesday', '26', 'SUN', 18],
-      ['Thursday', '27', 'BUSY', 11], ['Friday', '28', 'EXCITED', 22], ['Saturday', '29', 'TIRED', 31],
-    ],
-  },
-  {
-    label: 'August 30–September 5',
-    days: [
-      ['Sunday', '30', 'FAMILY', 27], ['Monday', '31', 'GEMS', 8], ['Tuesday', '1', 'HOME', 19], ['Wednesday', '2', 'CALM', 16],
-      ['Thursday', '3', 'TODAY', 0], ['Friday', '4', '', 0], ['Saturday', '5', '', 0],
-    ],
-  },
-  {
-    label: 'September 6–12',
-    days: [
-      ['Sunday', '6', '', 0], ['Monday', '7', '', 0], ['Tuesday', '8', '', 0], ['Wednesday', '9', '', 0],
-      ['Thursday', '10', '', 0], ['Friday', '11', '', 0], ['Saturday', '12', '', 0],
-    ],
-  },
+const wordDays = [
+  ['Friday', '21', 'CLEAR', 12], ['Saturday', '22', 'REST', 8], ['Sunday', '23', 'SLOW', 6], ['Monday', '24', 'WORK', 14],
+  ['Tuesday', '25', 'OPEN', 9], ['Wednesday', '26', 'SUN', 18], ['Thursday', '27', 'BUSY', 11], ['Friday', '28', 'EXCITED', 22],
+  ['Saturday', '29', 'TIRED', 31], ['Sunday', '30', 'FAMILY', 27], ['Monday', '31', 'GEMS', 8], ['Tuesday', '1', 'HOME', 19],
+  ['Wednesday', '2', 'CALM', 16], ['Thursday', '3', 'TODAY', 0],
 ] as const;
 
 function localDayKey() {
@@ -107,19 +90,13 @@ function todayLabel() {
   return new Intl.DateTimeFormat('en', { month: 'long', day: 'numeric', year: 'numeric' }).format(new Date());
 }
 
-function BrandHeader({ submitted, compact, xp }: { submitted: string; compact: boolean; xp: number }) {
+function BrandHeader({ submitted, xp }: { submitted: string; xp: number }) {
   const anonymousEchoes = submitted ? 37 + submitted.length * 11 : 0;
   const levelProgress = Math.min(100, Math.max(0, (xp - 600) / 4));
-  if (submitted && compact) return (
-    <header className="today-app-header">
-      <div className="today-brand-row"><div className="today-brand">WURD</div><div className="header-xp"><Sparkles /><span><strong>{xp} XP</strong><small>LEVEL 4</small><i><b style={{ width: `${levelProgress}%` }} /></i></span></div></div>
-      <strong className="today-word">{submitted}</strong>
-      <div className="today-meta-row"><p>{todayLabel()}</p><span><Waves />{anonymousEchoes}</span></div>
-    </header>
-  );
   if (submitted) return (
-    <header className="section-app-header">
-      <strong className="section-word">{submitted}</strong>
+    <header className="today-app-header">
+      <div className="today-brand-row"><div className="today-brand">WURD</div><div className="header-xp"><Sparkles /><span><strong>{xp} XP</strong><small>LEVEL 4</small><em><Flame />12 days <b>1.2×</b></em><i><b style={{ width: `${levelProgress}%` }} /></i></span></div></div>
+      <strong className="today-word">{submitted}</strong>
       <div className="today-meta-row"><p>{todayLabel()}</p><span><Waves />{anonymousEchoes}</span></div>
     </header>
   );
@@ -213,30 +190,22 @@ function WorldTab() {
   );
 }
 
-function YouTab({ submitted, xp }: { submitted: string; xp: number }) {
-  const weekTrack = useRef<HTMLDivElement>(null);
-  const levelProgress = Math.min(400, Math.max(0, xp - 600));
+function YouTab({ submitted }: { submitted: string }) {
+  const dayTrack = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
-      if (weekTrack.current) weekTrack.current.scrollLeft = weekTrack.current.clientWidth + 12;
+      if (dayTrack.current) dayTrack.current.scrollLeft = dayTrack.current.scrollWidth;
     });
     return () => window.cancelAnimationFrame(frame);
   }, []);
   return (
     <section className="tab-view you-view"><div className="profile-cozy profile-simple"><div className="profile-ring"><span>OS</span></div><div><span>YOUR ONE-WORD DIARY</span><h1>Otsar</h1><p><MapPin /> Tel Aviv</p></div></div>
-      <div className="progress-card">
-        <div className="level-progress"><div><span>LEVEL 4</span><strong>{xp} XP</strong></div><div className="xp-track"><i style={{ width: `${levelProgress / 4}%` }} /></div><p><span>{levelProgress} / 400</span><b>{Math.max(0, 1000 - xp)} XP to Level 5</b></p></div>
-        <div className="streak-multiplier"><Flame /><strong>12</strong><span>day streak</span><b>1.2×</b><small>daily XP</small></div>
-      </div>
-      <div className="calendar-head"><div><span>YOUR WORD CALENDAR</span><h2>Weeks in words</h2></div><small>SWIPE WEEKS →</small></div>
-      <div className="week-track" ref={weekTrack}>{calendarWeeks.map((week, weekIndex) => <section className="week-page" key={week.label} aria-label={week.label}>
-        <h3>{week.label}</h3><div className="week-grid">{week.days.map(([weekday, date, storedWord, echoes], dayIndex) => {
-          const isToday = weekIndex === 1 && dayIndex === 4;
-          const isFuture = weekIndex === 2 || (weekIndex === 1 && dayIndex > 4);
-          const word = isToday ? submitted : storedWord;
-          return <article className={`day-cell ${isToday ? 'is-today' : ''} ${isFuture ? 'is-future' : ''}`} key={`${weekday}-${date}`}><span>{weekday}</span><strong>{date}</strong><b>{word || '—'}</b><small>{word ? <><Waves />{isToday ? 37 + submitted.length * 11 : echoes}</> : 'Not yet'}</small></article>;
-        })}</div>
-      </section>)}</div>
+      <div className="calendar-head"><div><span>YOUR WORD CALENDAR</span><h2>Your last 14 days</h2></div><small>SWIPE DAYS →</small></div>
+      <div className="day-ribbon" ref={dayTrack} aria-label="Your words from the last 14 days">{wordDays.map(([weekday, date, storedWord, echoes], index) => {
+        const isToday = index === wordDays.length - 1;
+        const word = isToday ? submitted : storedWord;
+        return <article className={`diary-day-card ${isToday ? 'is-today' : ''}`} key={`${weekday}-${date}`}><span>{weekday}</span><strong>{date}</strong><b>{word}</b><small><Waves />{isToday ? 37 + submitted.length * 11 : echoes}</small>{isToday && <em>TODAY</em>}</article>;
+      })}</div>
     </section>
   );
 }
@@ -276,10 +245,10 @@ export default function CozyPreview() {
     });
   }
   return (
-    <main className={`cozy-stage fixed-app active-${tab} ${tab === 'today' && submitted ? 'today-app' : ''}`}><section className="cozy-shell"><BrandHeader submitted={submitted} compact={tab === 'today'} xp={852 + echoed.length} /><div className="cozy-main">
+    <main className={`cozy-stage fixed-app active-${tab} ${tab === 'today' && submitted ? 'today-app' : ''}`}><section className="cozy-shell"><BrandHeader submitted={submitted} xp={852 + echoed.length} /><div className="cozy-main">
       {tab === 'today' && <TodayTab submitted={submitted} setSubmitted={postWord} echoed={echoed} toggleEcho={toggleEcho} />}
       {tab === 'world' && <WorldTab />}
-      {tab === 'you' && <YouTab submitted={submitted} xp={852 + echoed.length} />}
+      {tab === 'you' && <YouTab submitted={submitted} />}
     </div><nav className="cozy-nav" aria-label="App navigation">{tabs.map(item => {
       const locked = !submitted && item.id === 'world';
       return <button key={item.id} className={`${tab === item.id ? 'active' : ''} ${locked ? 'locked' : ''}`} disabled={locked} title={locked ? 'Post today’s word to unlock' : item.label} onClick={() => setTab(item.id)}><item.icon />{locked && <Lock className="nav-lock" />}<span>{item.label}</span></button>;
