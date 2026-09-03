@@ -19,23 +19,27 @@ Open the app once a day, say one honest word, and discover what is resonating wi
 - **World:** Geographic patterns at World, Israel, and Nearby scale. Keep the current concept until the visualization is redesigned to avoid overlapping labels.
 - **You:** Streak, XP, level, daily word history, and the story formed by past words. Keep the current concept until its full redesign.
 
-## XP proposal
+## XP system (implemented)
 
 XP should reward showing up and resonance, without turning the app into a popularity contest.
 
 - Post today's word: **+10 XP**
-- Give an Echo: **+1 XP**, limited to the first 3 given per day
-- Receive an Echo: **+1 XP for every Echo received**
-- Exact daily match with an accepted friend: **+5 XP each**
-- Complete every 7-day streak segment: **+25 XP**
+- Give an Echo: **+1 XP**, limited to the first 8 given per day
+- Receive an Echo: **+8 XP for every unique Echo received**
 
-Levels unlock visual expression rather than titles: profile color sets, diary treatments, Echo animations, word-card textures, and yearly-story layouts. Core social functions never require a level or payment.
+The current maximum is **Level 3**:
+
+- **Level 1 — 0 XP:** the core experience and mint words.
+- **Level 2 — 100 XP:** add one emoji to the daily word.
+- **Level 3 — 300 XP:** choose mint, blue, or coral for the daily word.
+
+The active streak multiplies every XP award: 3 days = 1.1×, 7 = 1.2×, 14 = 1.3×, 30 = 1.4×, and 60 = 1.5×. Awards are rounded to whole XP and recorded in an idempotent server-side ledger.
 
 ## Backend architecture
 
 GitHub Pages hosts the static React app. Supabase provides:
 
-- passwordless email authentication;
+- Google authentication and username onboarding;
 - Postgres tables for profiles, words, Echoes, friendships, and XP events;
 - Row Level Security for user-owned data;
 - database triggers for tamper-resistant XP awards;
@@ -45,19 +49,19 @@ The browser receives only the Supabase project URL and publishable key. Secret a
 
 ## Delivery sequence
 
-### Phase 1 — Shareable prototype
+### Phase 1 — Shareable prototype (complete)
 
 - Publish the current mobile-first experience on GitHub Pages.
 - Preserve fake community data and local posting so friends can experience the interaction immediately.
-- Collect feedback on posting, the twelve-card feed, Echo language, and session length.
+- Collect feedback on posting, the eight-card feed, Echo language, and session length.
 
-### Phase 2 — Friends-and-family alpha
+### Phase 2 — Friends-and-family alpha (in progress)
 
-- Connect Supabase Auth and onboarding.
-- Replace local words and Echoes with shared data.
+- Connect Supabase Google Auth and username onboarding.
+- Replace local words and Echoes with shared data while preserving a no-credentials demo fallback.
 - Add friend requests and accepted-friend filtering.
-- Add XP ledger, streak calculation, and a compact level indicator.
-- Enforce the one-word-per-local-day rule in the database.
+- Add XP ledger, streak calculation, Level 2 emoji, Level 3 colors, and a compact level indicator.
+- Enforce the one-word-per-local-day and earned-unlock rules in the database.
 
 ### Phase 3 — Product depth
 

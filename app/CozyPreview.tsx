@@ -1,6 +1,8 @@
 'use client';
 
-import { FormEvent, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { SyntheticEvent } from 'react';
+import type { User } from '@supabase/supabase-js';
 import {
   CircleUserRound, Flame, Globe2, Lock,
   Sparkles, Sun, Waves,
@@ -12,9 +14,20 @@ import type { FeatureCollection } from 'geojson';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { isSupabaseConfigured, supabase, type FeedWord, type WordColor, type WurdProfile } from '@/lib/supabase';
 
 type Tab = 'today' | 'world' | 'you';
 type Scope = 'World' | 'Israel' | 'Nearby';
+type PostWordInput = { word: string; emoji: string | null; color: WordColor };
+type DiaryWord = { id: number; local_date: string; word: string; emoji: string | null; color: WordColor; echo_count: number };
+
+const wordColorValues: Record<WordColor, string> = {
+  mint: '#00b979',
+  blue: '#3378d4',
+  coral: '#ef6b5b',
+};
+
+const emojiChoices = ['🙂', '🔥', '✨', '❤️', '🌱', '💭'];
 
 const atlas = countries110 as unknown as { objects: { countries: Parameters<typeof feature>[1] } };
 const worldGeo = feature(countries110 as unknown as Parameters<typeof feature>[0], atlas.objects.countries) as unknown as FeatureCollection;
@@ -90,14 +103,30 @@ function todayLabel() {
   return new Intl.DateTimeFormat('en', { month: 'long', day: 'numeric', year: 'numeric' }).format(new Date());
 }
 
-function BrandHeader({ submitted, xp }: { submitted: string; xp: number }) {
-  const anonymousEchoes = submitted ? 37 + submitted.length * 11 : 0;
-  const levelProgress = Math.min(100, Math.max(0, (xp - 600) / 4));
+function multiplierForStreak(streak: number) {
+  if (streak >= 60) return 1.5;
+  if (streak >= 30) return 1.4;
+  if (streak >= 14) return 1.3;
+  if (streak >= 7) return 1.2;
+  if (streak >= 3) return 1.1;
+  return 1;
+}
+
+function levelProgressFor(xp: number, level: number) {
+  if (level >= 3) return 100;
+  const floor = level === 1 ? 0 : 100;
+  const ceiling = level === 1 ? 100 : 300;
+  return Math.min(100, Math.max(0, ((xp - floor) / (ceiling - floor)) * 100));
+}
+
+function BrandHeader({ submitted, emoji, color, echoes, xp, level, streak }: { submitted: string; emoji: string | null; color: WordColor; echoes: number; xp: number; level: number; streak: number }) {
+  const levelProgress = levelProgressFor(xp, level);
+  const multiplier = multiplierForStreak(streak);
   if (submitted) return (
     <header className="today-app-header">
-      <div className="today-brand-row"><div className="today-brand">WURD</div><div className="header-xp"><span className="xp-label">XP</span><strong>{xp}</strong><em>1.2×</em><i className="xp-bar"><b style={{ width: `${levelProgress}%` }} /></i><span className="xp-streak"><Flame />12</span></div></div>
-      <strong className="today-word">{submitted}</strong>
-      <div className="today-meta-row"><p>{todayLabel()}</p><span><Waves />{anonymousEchoes}</span></div>
+      <div className="today-brand-row"><div className="today-brand">WURD</div><div className="header-xp"><span className="xp-label">XP</span><strong>{xp}</strong><em>{multiplier.toFixed(1)}×</em><i className="xp-bar"><b style={{ width: `${levelProgress}%` }} /></i><span className="xp-streak"><Flame />{streak}</span></div></div>
+      <strong className="today-word" style={{ color: wordColorValues[color] }}>{submitted}{emoji && <span className="today-emoji"> {emoji}</span>}</strong>
+      <div className="today-meta-row"><p>{todayLabel()}</p><span><Waves />{echoes}</span></div>
     </header>
   );
   return <header className="cozy-header"><div className="cozy-logo">wurd</div><p>{todayLabel()}</p></header>;
@@ -114,12 +143,45 @@ function LiveCard({ person, echoed, onEcho }: { person: typeof livePeople[number
   );
 }
 
-function TodayTab({ submitted, setSubmitted, echoed, toggleEcho }: { submitted: string; setSubmitted: (word: string) => void; echoed: string[]; toggleEcho: (id: string) => void }) {
+function initialsFor(name: string) {
+  return name.split(/\s+/).map(part => part[0]).join('').slice(0, 2).toUpperCase();
+}
+
+function timeAgo(value: string) {
+  const minutes = Math.max(0, Math.floor((Date.now() - new Date(value).getTime()) / 60000));
+  if (minutes < 1) return 'now';
+  if (minutes < 60) return `${minutes}m`;
+  return `${Math.floor(minutes / 60)}h`;
+}
+
+function FeedCard({ item, ownWord, onEcho }: { item: FeedWord; ownWord: string; onEcho: () => void }) {
+  const name = item.display_name || item.username;
+  const match = item.word.toLocaleUpperCase() === ownWord.toLocaleUpperCase();
+  const content = <><div className="live-person"><Avatar><AvatarFallback>{initialsFor(name)}</AvatarFallback></Avatar><span><strong>{name}</strong><small>{item.city || 'Somewhere'} · {timeAgo(item.created_at)}</small></span></div><strong className="live-word" style={{ color: wordColorValues[item.color] }}>{item.word}{item.emoji && <span> {item.emoji}</span>}</strong>{match && <span className="same-word-label"><Sparkles /> Same word</span>}<span className="echo-count"><Waves />{item.echo_count}</span></>;
+  if (match) return <article className="live-card friend-square exact-match" aria-label={`${name} chose the same word as you`}>{content}</article>;
+  return <button className={`live-card friend-square ${item.echoed_by_me ? 'echoed' : ''}`} aria-pressed={item.echoed_by_me} aria-label={`${name} chose ${item.word}. Tap to echo.`} onClick={onEcho}>{content}</button>;
+}
+
+type TodayTabProps = {
+  submitted: string;
+  level: number;
+  feed: FeedWord[];
+  feedLoading: boolean;
+  feedMode: 'Top today' | 'Friends';
+  setFeedMode: (mode: 'Top today' | 'Friends') => void;
+  setSubmitted: (post: PostWordInput) => Promise<void>;
+  echoed: string[];
+  toggleEcho: (id: number | string, echoed?: boolean) => Promise<void>;
+};
+
+function TodayTab({ submitted, level, feed, feedLoading, feedMode, setFeedMode, setSubmitted, echoed, toggleEcho }: TodayTabProps) {
   const [draft, setDraft] = useState('');
   const [pending, setPending] = useState('');
+  const [emoji, setEmoji] = useState<string | null>(null);
+  const [color, setColor] = useState<WordColor>('mint');
   const [error, setError] = useState('');
-  const [feedMode, setFeedMode] = useState<'Top today' | 'Friends'>('Top today');
-  function submit(event: FormEvent) {
+  const [posting, setPosting] = useState(false);
+  function submit(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
     const clean = draft.trim();
     if (!clean || /\s/.test(clean)) { setError('Just one word — no spaces.'); return; }
@@ -127,19 +189,22 @@ function TodayTab({ submitted, setSubmitted, echoed, toggleEcho }: { submitted: 
   }
   if (!submitted) return (
     <section className="tab-view today-view"><div className="daily-prompt">
-      {!pending ? <><span className="soft-icon"><Sun /></span><p>YOUR ONE POST TODAY</p><h1>What&apos;s your<br />word?</h1><small>Choose the single word that represents your day.</small><form onSubmit={submit}><Input autoFocus maxLength={20} value={draft} onChange={event => { setDraft(event.target.value); setError(''); }} placeholder="TYPE YOUR WORD" /><Button type="submit">Continue</Button></form><em>{error || 'One word, up to 20 letters. Everything else unlocks after you post.'}</em></> :
-      <div className="confirm-word"><span>YOUR WORD FOR {todayLabel().toUpperCase()}</span><h2>{pending}</h2><p>This is the only word you can post today. At midnight, you&apos;ll get a new one.</p><div><Button variant="outline" onClick={() => setPending('')}>Go back</Button><Button onClick={() => setSubmitted(pending)}>Post my word</Button></div></div>}
+      {!pending ? <><span className="soft-icon"><Sun /></span><p>YOUR ONE POST TODAY</p><h1>What&apos;s your<br />word?</h1><small>Choose the single word that represents your day.</small><form onSubmit={submit}><Input maxLength={20} value={draft} onChange={event => { setDraft(event.target.value); setError(''); }} placeholder="TYPE YOUR WORD" /><Button type="submit">Continue</Button></form><em>{error || 'One word, up to 20 letters. Everything else unlocks after you post.'}</em></> :
+      <div className="confirm-word"><span>YOUR WORD FOR {todayLabel().toUpperCase()}</span><h2 style={{ color: wordColorValues[color] }}>{pending}{emoji && ` ${emoji}`}</h2><p>This is the only word you can post today. At midnight, you&apos;ll get a new one.</p>
+        <div className="reward-customizer">
+          <section className={level < 2 ? 'locked-reward' : ''}><b>{level < 2 ? 'LEVEL 2 · EMOJI' : 'ADD ONE EMOJI'}</b><div className="emoji-options"><button className={!emoji ? 'active' : ''} onClick={() => setEmoji(null)}>None</button>{emojiChoices.map(item => <button disabled={level < 2} className={emoji === item ? 'active' : ''} onClick={() => setEmoji(item)} key={item}>{item}</button>)}</div></section>
+          <section className={level < 3 ? 'locked-reward' : ''}><b>{level < 3 ? 'LEVEL 3 · COLORS' : 'WORD COLOR'}</b><div className="color-options">{(Object.keys(wordColorValues) as WordColor[]).map(item => <button disabled={level < 3 && item !== 'mint'} className={color === item ? 'active' : ''} style={{ background: wordColorValues[item] }} aria-label={`${item} word color`} onClick={() => setColor(item)} key={item} />)}</div></section>
+        </div>
+        {error && <em className="post-error">{error}</em>}
+        <div className="confirm-actions"><Button variant="outline" disabled={posting} onClick={() => setPending('')}>Go back</Button><Button disabled={posting} onClick={async () => { setPosting(true); setError(''); try { await setSubmitted({ word: pending, emoji, color }); } catch (reason) { setError(reason instanceof Error ? reason.message : 'Could not post your word.'); } finally { setPosting(false); } }}>{posting ? 'Posting…' : 'Post my word'}</Button></div>
+      </div>}
     </div></section>
   );
   const topPeople = [...livePeople].sort((left, right) => right[6] - left[6]).slice(0, 8);
   return (
     <section className="tab-view live-view">
-      <div className="today-toolbar"><span><i />{feedMode === 'Top today' ? '1,284 spoke' : '8 of 12 spoke'}</span><div className="today-mode cozy-segments"><button className={feedMode === 'Top today' ? 'active' : ''} onClick={() => setFeedMode('Top today')}>Top</button><button className={feedMode === 'Friends' ? 'active' : ''} onClick={() => setFeedMode('Friends')}>Friends</button></div></div>
-      {feedMode === 'Top today' ? <>
-        <div className="live-grid">{topPeople.map((person, index) => <LiveCard key={`${person[0]}-${person[2]}`} person={person} echoed={echoed.includes(`live-${index}`)} onEcho={() => toggleEcho(`live-${index}`)} />)}</div>
-      </> : <>
-        <div className="friends-card-grid">{friends.map(friend => <FriendCard key={friend.id} friend={friend} match={friend.word === submitted} echoed={echoed.includes(friend.id)} onEcho={() => toggleEcho(friend.id)} />)}</div>
-      </>}
+      <div className="today-toolbar"><span><i />{isSupabaseConfigured ? `${feed[0]?.spoke_count || 0} spoke` : feedMode === 'Top today' ? '1,284 spoke' : '8 of 12 spoke'}</span><div className="today-mode cozy-segments"><button className={feedMode === 'Top today' ? 'active' : ''} onClick={() => setFeedMode('Top today')}>Top</button><button className={feedMode === 'Friends' ? 'active' : ''} onClick={() => setFeedMode('Friends')}>Friends</button></div></div>
+      {isSupabaseConfigured ? <div className={feedMode === 'Top today' ? 'live-grid' : 'friends-card-grid'}>{feedLoading ? <p className="feed-empty">Finding today&apos;s words…</p> : feed.length ? feed.map(item => <FeedCard key={item.id} item={item} ownWord={submitted} onEcho={() => toggleEcho(item.id, item.echoed_by_me)} />) : <p className="feed-empty">{feedMode === 'Friends' ? 'Your friends have not spoken yet.' : 'You are early. Today’s words will appear here.'}</p>}</div> : feedMode === 'Top today' ? <div className="live-grid">{topPeople.map((person, index) => <LiveCard key={`${person[0]}-${person[2]}`} person={person} echoed={echoed.includes(`live-${index}`)} onEcho={() => void toggleEcho(`live-${index}`)} />)}</div> : <div className="friends-card-grid">{friends.map(friend => <FriendCard key={friend.id} friend={friend} match={friend.word === submitted} echoed={echoed.includes(friend.id)} onEcho={() => void toggleEcho(friend.id)} />)}</div>}
     </section>
   );
 }
@@ -166,7 +231,7 @@ function WorldMap({ scope }: { scope: Scope }) {
   const makePath = geoPath(projection);
   return (
     <div className="real-map">
-      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`${scope} word map`}>
+      <svg viewBox={`0 0 ${width} ${height}`} aria-label={`${scope} word map`}>
         <g className="countries">{worldGeo.features.map((country, index) => <path d={makePath(country) || ''} key={index} />)}</g>
       </svg>
       <div className="map-label-layer">{wordSets[scope].map(item => {
@@ -190,7 +255,7 @@ function WorldTab() {
   );
 }
 
-function YouTab({ submitted }: { submitted: string }) {
+function YouTab({ submitted, history }: { submitted: string; history: DiaryWord[] }) {
   const dayTrack = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
@@ -198,15 +263,14 @@ function YouTab({ submitted }: { submitted: string }) {
     });
     return () => window.cancelAnimationFrame(frame);
   }, []);
+  const diary = history.length ? [...history].reverse().map(item => {
+    const date = new Date(`${item.local_date}T12:00:00`);
+    return { id: item.id, weekday: new Intl.DateTimeFormat('en', { weekday: 'long' }).format(date), day: new Intl.DateTimeFormat('en', { day: 'numeric' }).format(date), month: new Intl.DateTimeFormat('en', { month: 'short' }).format(date), word: item.word, emoji: item.emoji, color: item.color, echoes: item.echo_count, isToday: item.local_date === localDayKey() };
+  }) : wordDays.map(([weekday, date, storedWord, echoes], index) => ({ id: index, weekday, day: date, month: index < wordDays.length - 2 ? 'Aug' : 'Sep', word: index === wordDays.length - 1 ? submitted : storedWord, emoji: null, color: 'mint' as WordColor, echoes: index === wordDays.length - 1 ? 37 + submitted.length * 11 : echoes, isToday: index === wordDays.length - 1 }));
   return (
     <section className="tab-view you-view"><div className="profile-placeholder" aria-hidden="true" />
       <div className="calendar-swipe-cue">SWIPE DAYS ↑</div>
-      <div className="day-ribbon" ref={dayTrack} aria-label="Your words from the last 14 days">{wordDays.map(([weekday, date, storedWord, echoes], index) => {
-        const isToday = index === wordDays.length - 1;
-        const word = isToday ? submitted : storedWord;
-        const month = index < wordDays.length - 2 ? 'Aug' : 'Sep';
-        return <article className={`diary-day-card ${isToday ? 'is-today' : ''}`} key={`${weekday}-${date}`}><span>{weekday}</span><div className="day-date"><i>{month}</i><strong>{date}</strong></div><b>{word}</b><small><Waves />{isToday ? 37 + submitted.length * 11 : echoes}</small>{isToday && <em>TODAY</em>}</article>;
-      })}</div>
+      <div className="day-ribbon" ref={dayTrack} aria-label="Your recent words">{diary.map(item => <article className={`diary-day-card ${item.isToday ? 'is-today' : ''}`} key={item.id}><span>{item.weekday}</span><div className="day-date"><i>{item.month}</i><strong>{item.day}</strong></div><b style={{ color: wordColorValues[item.color] }}>{item.word}{item.emoji && ` ${item.emoji}`}</b><small><Waves />{item.echoes}</small>{item.isToday && <em>TODAY</em>}</article>)}</div>
     </section>
   );
 }
@@ -219,12 +283,83 @@ export default function CozyPreview() {
   const [tab, setTab] = useState<Tab>('today');
   const [dayKey, setDayKey] = useState(localDayKey);
   const [submitted, setSubmittedState] = useState('');
+  const [submittedEmoji, setSubmittedEmoji] = useState<string | null>(null);
+  const [submittedColor, setSubmittedColor] = useState<WordColor>('mint');
   const [echoed, setEchoed] = useState<string[]>([]);
+  const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<WurdProfile | null>(null);
+  const [feed, setFeed] = useState<FeedWord[]>([]);
+  const [history, setHistory] = useState<DiaryWord[]>([]);
+  const [feedMode, setFeedMode] = useState<'Top today' | 'Friends'>('Top today');
+  const [authLoading, setAuthLoading] = useState(isSupabaseConfigured);
+  const [feedLoading, setFeedLoading] = useState(false);
+  const [appError, setAppError] = useState('');
+  const [usernameDraft, setUsernameDraft] = useState('');
+
+  async function loadAccount(activeUser: User) {
+    if (!supabase) return;
+    setFeedLoading(true);
+    const [profileResult, wordResult, historyResult] = await Promise.all([
+      supabase.from('profiles').select('*').eq('id', activeUser.id).single(),
+      supabase.from('daily_words').select('id, local_date, word, emoji, color').eq('user_id', activeUser.id).eq('local_date', localDayKey()).maybeSingle(),
+      supabase.rpc('my_word_history', { p_limit: 14 }),
+    ]);
+    if (profileResult.error) throw profileResult.error;
+    if (historyResult.error) throw historyResult.error;
+    setProfile(profileResult.data as WurdProfile);
+    setHistory((historyResult.data || []) as DiaryWord[]);
+    if (wordResult.data) {
+      setSubmittedState(wordResult.data.word);
+      setSubmittedEmoji(wordResult.data.emoji);
+      setSubmittedColor(wordResult.data.color as WordColor);
+    } else {
+      setSubmittedState('');
+      setSubmittedEmoji(null);
+      setSubmittedColor('mint');
+    }
+    setFeedLoading(false);
+  }
+
+  async function loadFeed(mode = feedMode, activeUser = user) {
+    if (!supabase || !activeUser) return;
+    setFeedLoading(true);
+    const result = await supabase.rpc('feed_words', { p_date: localDayKey(), p_limit: 8, p_friends_only: mode === 'Friends' });
+    setFeedLoading(false);
+    if (result.error) throw result.error;
+    setFeed((result.data || []) as FeedWord[]);
+  }
 
   useEffect(() => {
+    if (!supabase) return;
+    let live = true;
+    void supabase.auth.getUser().then(async ({ data, error }) => {
+      if (!live) return;
+      if (error) setAppError(error.message);
+      setUser(data.user);
+      try { if (data.user) await loadAccount(data.user); } catch (reason) { setAppError(reason instanceof Error ? reason.message : 'Could not load your account.'); }
+      if (live) setAuthLoading(false);
+    });
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!live) return;
+      setUser(session?.user || null);
+      if (session?.user) void loadAccount(session.user).catch(reason => setAppError(reason instanceof Error ? reason.message : 'Could not load your account.'));
+      else { setProfile(null); setSubmittedState(''); setFeed([]); setHistory([]); }
+    });
+    return () => { live = false; listener.subscription.unsubscribe(); };
+  }, []);
+
+  useEffect(() => {
+    if (!user || !submitted) return;
+    void loadFeed(feedMode, user).catch(reason => setAppError(reason instanceof Error ? reason.message : 'Could not load today’s words.'));
+  }, [user, submitted, feedMode]);
+
+  useEffect(() => {
+    if (isSupabaseConfigured) return;
     const word = window.localStorage.getItem(`wurd:daily:${dayKey}`) || '';
+    const savedPost = window.localStorage.getItem(`wurd:post:${dayKey}`);
     const savedEchoes = window.localStorage.getItem(`wurd:echoes:${dayKey}`);
     setSubmittedState(word);
+    if (savedPost) { try { const post = JSON.parse(savedPost) as PostWordInput; setSubmittedEmoji(post.emoji); setSubmittedColor(post.color); } catch { /* supports older local saves */ } }
     try { setEchoed(savedEchoes ? JSON.parse(savedEchoes) : []); } catch { setEchoed([]); }
     if (!word) setTab('today');
     const timer = window.setInterval(() => {
@@ -234,22 +369,69 @@ export default function CozyPreview() {
     return () => window.clearInterval(timer);
   }, [dayKey]);
 
-  function postWord(word: string) {
-    setSubmittedState(word);
-    window.localStorage.setItem(`wurd:daily:${dayKey}`, word);
+  async function postWord(post: PostWordInput) {
+    if (supabase && user) {
+      const result = await supabase.rpc('post_daily_word', { p_word: post.word, p_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, p_emoji: post.emoji, p_color: post.color, p_city: profile?.city || null, p_country_code: profile?.country_code || null });
+      if (result.error) throw result.error;
+      setSubmittedState(post.word);
+      setSubmittedEmoji(post.emoji);
+      setSubmittedColor(post.color);
+      await loadAccount(user);
+      return;
+    }
+    setSubmittedState(post.word);
+    setSubmittedEmoji(post.emoji);
+    setSubmittedColor(post.color);
+    window.localStorage.setItem(`wurd:daily:${dayKey}`, post.word);
+    window.localStorage.setItem(`wurd:post:${dayKey}`, JSON.stringify(post));
   }
-  function toggleEcho(id: string) {
+  async function toggleEcho(id: number | string, isEchoed = false) {
+    if (supabase && user && typeof id === 'number') {
+      const result = isEchoed ? await supabase.rpc('un_echo_word', { p_daily_word_id: id }) : await supabase.rpc('echo_word', { p_daily_word_id: id });
+      if (result.error) { setAppError(result.error.message); return; }
+      await Promise.all([loadFeed(feedMode, user), loadAccount(user)]);
+      return;
+    }
+    const localId = String(id);
     setEchoed(current => {
-      const next = current.includes(id) ? current.filter(item => item !== id) : [...current, id];
+      const next = current.includes(localId) ? current.filter(item => item !== localId) : [...current, localId];
       window.localStorage.setItem(`wurd:echoes:${dayKey}`, JSON.stringify(next));
       return next;
     });
   }
+
+  async function signIn() {
+    if (!supabase) return;
+    setAppError('');
+    const redirectTo = `${window.location.origin}${window.location.pathname}`;
+    const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo } });
+    if (error) setAppError(error.message);
+  }
+
+  async function saveUsername(event: SyntheticEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!supabase || !user) return;
+    const clean = usernameDraft.trim().toLowerCase();
+    if (!/^[a-z0-9_]{3,24}$/.test(clean)) { setAppError('Use 3–24 letters, numbers, or underscores.'); return; }
+    const { error } = await supabase.from('profiles').update({ username: clean }).eq('id', user.id);
+    if (error) { setAppError(error.code === '23505' ? 'That username is already taken.' : error.message); return; }
+    await loadAccount(user);
+  }
+
+  if (authLoading) return <main className="auth-stage"><div className="auth-card"><div className="cozy-logo">wurd</div><p>Opening your day…</p></div></main>;
+  if (isSupabaseConfigured && !user) return <main className="auth-stage"><div className="auth-card"><div className="cozy-logo">wurd</div><h1>One word.<br />Once a day.</h1><p>See what your people and the world are feeling—without the noise.</p><Button onClick={signIn}><span className="google-mark">G</span> Continue with Google</Button>{appError && <em>{appError}</em>}</div></main>;
+  if (profile?.username.startsWith('wurd_')) return <main className="auth-stage"><form className="auth-card" onSubmit={saveUsername}><div className="cozy-logo">wurd</div><h1>What should<br />people call you?</h1><p>Your username appears beside your word. You can change it later.</p><Input maxLength={24} value={usernameDraft} onChange={event => { setUsernameDraft(event.target.value); setAppError(''); }} placeholder="your_username" /><Button type="submit">Claim username</Button>{appError && <em>{appError}</em>}</form></main>;
+
+  const xp = profile?.xp ?? 852 + echoed.length;
+  const level = profile?.level ?? 3;
+  const streak = profile?.streak_days ?? 12;
+  const ownEchoes = history.find(item => item.local_date === dayKey)?.echo_count ?? (submitted ? 37 + submitted.length * 11 : 0);
   return (
-    <main className={`cozy-stage fixed-app active-${tab} ${tab === 'today' && submitted ? 'today-app' : ''}`}><section className="cozy-shell"><BrandHeader submitted={submitted} xp={852 + echoed.length} /><div className="cozy-main">
-      {tab === 'today' && <TodayTab submitted={submitted} setSubmitted={postWord} echoed={echoed} toggleEcho={toggleEcho} />}
+    <main className={`cozy-stage fixed-app active-${tab} ${submitted ? 'today-app' : ''}`}><section className="cozy-shell"><BrandHeader submitted={submitted} emoji={submittedEmoji} color={submittedColor} echoes={ownEchoes} xp={xp} level={level} streak={streak} /><div className="cozy-main">
+      {appError && <button className="app-error" onClick={() => setAppError('')}>{appError}</button>}
+      {tab === 'today' && <TodayTab submitted={submitted} level={level} feed={feed} feedLoading={feedLoading} feedMode={feedMode} setFeedMode={setFeedMode} setSubmitted={postWord} echoed={echoed} toggleEcho={toggleEcho} />}
       {tab === 'world' && <WorldTab />}
-      {tab === 'you' && <YouTab submitted={submitted} />}
+      {tab === 'you' && <YouTab submitted={submitted} history={history} />}
     </div><nav className="cozy-nav" aria-label="App navigation">{tabs.map(item => {
       const locked = !submitted && item.id === 'world';
       return <button key={item.id} className={`${tab === item.id ? 'active' : ''} ${locked ? 'locked' : ''}`} disabled={locked} title={locked ? 'Post today’s word to unlock' : item.label} onClick={() => setTab(item.id)}><item.icon />{locked && <Lock className="nav-lock" />}<span>{item.label}</span></button>;

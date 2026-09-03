@@ -782,3 +782,51 @@ html, body, #root { height: 100%; overflow: hidden; overscroll-behavior: none; }
   .fixed-app.active-you .profile-placeholder { flex-basis: 62px; }
   .fixed-app.active-you .calendar-swipe-cue { flex-basis: 20px; padding-bottom: 4px; }
 }
+
+/* Account entry and earned word styling */
+.auth-stage { width: 100%; height: 100svh; height: 100dvh; display: grid; place-items: center; overflow: hidden; padding: 22px; background: radial-gradient(circle at 50% 12%, #fff 0, #f3fbf7 54%, #e8f4ef 100%); }
+.auth-card { width: min(100%, 410px); display: flex; flex-direction: column; align-items: center; padding: 46px 30px; border: 1px solid #dcece5; border-radius: 34px; background: rgba(255,255,255,.94); box-shadow: 0 24px 70px rgba(20,65,49,.11); text-align: center; }
+.auth-card h1 { margin: 32px 0 13px; font-size: clamp(42px, 11vw, 58px); line-height: .92; letter-spacing: -.075em; }
+.auth-card p { max-width: 290px; margin: 0 0 28px; color: #66766f; font-size: 13px; line-height: 1.55; }
+.auth-card input { height: 50px; margin-bottom: 10px; border-color: #c8e6da; border-radius: 14px; text-align: center; }
+.auth-card > button { width: 100%; height: 50px; border-radius: 999px; background: #00e695; color: #073c2b; font-weight: 800; }
+.auth-card > em { margin-top: 13px; color: #bd3150; font-size: 11px; font-style: normal; }
+.google-mark { width: 23px; height: 23px; display: inline-grid; place-items: center; margin-right: 8px; border-radius: 50%; background: white; color: #4285f4; font: 800 13px Arial, sans-serif; }
+
+.today-emoji { font-family: Apple Color Emoji, Segoe UI Emoji, sans-serif; letter-spacing: 0; }
+.reward-customizer { display: grid !important; grid-template-columns: 1fr !important; gap: 10px !important; margin-top: 18px !important; }
+.reward-customizer section { padding: 10px; border: 1px solid #dcece5; border-radius: 14px; background: rgba(255,255,255,.76); }
+.reward-customizer section > b { display: block; margin-bottom: 8px; color: #6a7d75; font-size: 7px; letter-spacing: .11em; }
+.reward-customizer .locked-reward { opacity: .58; }
+.emoji-options { display: flex; justify-content: center; gap: 5px; }
+.emoji-options button { width: 31px; height: 31px; padding: 0; border: 1px solid #dce8e3; border-radius: 9px; background: white !important; color: #26342e !important; font-size: 15px !important; }
+.emoji-options button:first-child { width: 42px; font-size: 7px !important; font-weight: 750; }
+.emoji-options button.active { border-color: #00c982; box-shadow: 0 0 0 2px #cffff0; }
+.color-options { display: flex; justify-content: center; gap: 11px; }
+.color-options button { width: 25px; height: 25px; padding: 0; border: 4px solid white; border-radius: 50%; box-shadow: 0 0 0 1px #cbded6; }
+.color-options button.active { box-shadow: 0 0 0 2px #174d3b; }
+.confirm-word > .confirm-actions { display: grid; grid-template-columns: 1fr 1.4fr; gap: 9px; margin-top: 14px; }
+.post-error { display: block; margin-top: 9px; color: #bd3150; font-size: 10px; font-style: normal; }
+.feed-empty { grid-column: 1 / -1; align-self: center; margin: 0 auto; max-width: 260px; color: #73837c; font: 15px/1.45 Georgia, 'Times New Roman', serif; text-align: center; }
+.app-error { position: absolute; z-index: 40; top: max(8px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); width: min(calc(100% - 28px), 520px); padding: 9px 15px; border: 1px solid #f0bec8; border-radius: 999px; background: #fff4f6; color: #9d2942; font-size: 10px; box-shadow: 0 8px 24px rgba(100,20,40,.12); }
+
+@media (max-width: 620px) {
+  .auth-stage { padding: 0; background: white; }
+  .auth-card { width: 100%; height: 100%; justify-content: center; border: 0; border-radius: 0; box-shadow: none; }
+  .confirm-word { padding: 20px 16px; }
+  .confirm-word h2 { margin: 12px 0 10px; font-size: clamp(40px, 13vw, 62px); }
+}
+
+@media (max-height: 740px) {
+  .confirm-word { padding-top: 13px; padding-bottom: 13px; }
+  .confirm-word h2 { margin: 8px 0; font-size: 38px; }
+  .confirm-word p { font-size: 10px; }
+  .reward-customizer { grid-template-columns: 1fr 1fr !important; margin-top: 9px !important; }
+  .reward-customizer section { padding: 7px; }
+  .emoji-options { gap: 2px; }
+  .emoji-options button { width: 24px; height: 25px; font-size: 12px !important; }
+  .emoji-options button:first-child { width: 34px; }
+  .color-options button { width: 21px; height: 21px; }
+  .confirm-word > .confirm-actions { margin-top: 8px; }
+  .confirm-word button { height: 38px; }
+}

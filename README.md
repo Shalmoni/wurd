@@ -4,7 +4,7 @@ One word a day. See what resonates.
 
 `wurd` is a mobile-first social web app where each person posts exactly one word per local day. Posting unlocks a quiet daily feed. People can anonymously Echo words that resonate, follow friends, build a personal word diary, and earn XP through consistent participation.
 
-## Current prototype
+## Current app
 
 - One-word daily posting flow with a confirmation step
 - Today feed with 8 two-column word cards
@@ -12,7 +12,10 @@ One word a day. See what resonates.
 - Anonymous Echo interactions by a single tap
 - World map and rewind concept
 - Personal word diary and streak concept
-- Local browser persistence while the shared backend is connected
+- Google sign-in and username onboarding when Supabase is configured
+- Shared daily words, anonymous Echoes, streaks, XP, and word history
+- Level 2 emoji and Level 3 word-color unlocks, enforced by the database
+- Local browser fallback when backend environment variables are absent
 - Installable mobile-web manifest
 
 ## Run locally
@@ -36,7 +39,7 @@ The static site is written to `dist/`. Pushes to `main` are deployed automatical
 
 ## Supabase
 
-The planned backend covers passwordless accounts, profiles, daily words, friendships, anonymous Echoes, and XP. The initial schema lives in `supabase/migrations/` and enables Row Level Security on every exposed table.
+The backend covers Google accounts, profiles, daily words, friendships, anonymous Echoes, and XP. The schema lives in `supabase/migrations/`, enables Row Level Security on every exposed table, and keeps XP and unlock checks in server-side functions.
 
 Copy `.env.example` to `.env.local` after creating the Supabase project. Only use the public project URL and publishable key in the frontend; never expose a secret or service-role key.
 
