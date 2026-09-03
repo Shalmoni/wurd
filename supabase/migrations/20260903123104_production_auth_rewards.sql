@@ -72,7 +72,7 @@ revoke all on function private.multiplier_for_user(uuid) from public, anon, auth
 create or replace function private.award_xp(
   target_user uuid,
   event_kind public.xp_event_kind,
-  base_points integer,
+  event_points integer,
   event_source text
 ) returns void
 language plpgsql
@@ -82,11 +82,11 @@ as $$
 declare
   awarded_points integer;
 begin
-  if target_user is null or base_points <= 0 then
+  if target_user is null or event_points <= 0 then
     return;
   end if;
 
-  awarded_points := greatest(1, round(base_points * coalesce(private.multiplier_for_user(target_user), 1.0))::integer);
+  awarded_points := greatest(1, round(event_points * coalesce(private.multiplier_for_user(target_user), 1.0))::integer);
 
   insert into public.xp_events (user_id, kind, points, source_key)
   values (target_user, event_kind, awarded_points, event_source)

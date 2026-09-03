@@ -43,4 +43,12 @@ The backend covers Google accounts, profiles, daily words, friendships, anonymou
 
 Copy `.env.example` to `.env.local` after creating the Supabase project. Only use the public project URL and publishable key in the frontend; never expose a secret or service-role key.
 
+The hosted WURD project is `fyimgwikdgthiltvzoma` in Frankfurt. Google OAuth uses this callback URL:
+
+```text
+https://fyimgwikdgthiltvzoma.supabase.co/auth/v1/callback
+```
+
+The production site URL is `https://shalmoni.github.io/wurd/`. Keep the Google client secret in the Supabase dashboard only; it must never be added to this repository or to frontend environment variables.
+
 See [PLAN.md](./PLAN.md) for the product and implementation roadmap.
