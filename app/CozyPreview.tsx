@@ -207,7 +207,7 @@ function WorldTab() {
   );
 }
 
-function YouTab({ submitted, reset, xp }: { submitted: string; reset: () => void; xp: number }) {
+function YouTab({ submitted, xp }: { submitted: string; xp: number }) {
   const weekTrack = useRef<HTMLDivElement>(null);
   const levelProgress = Math.min(400, Math.max(0, xp - 600));
   useEffect(() => {
@@ -231,7 +231,6 @@ function YouTab({ submitted, reset, xp }: { submitted: string; reset: () => void
           return <article className={`day-cell ${isToday ? 'is-today' : ''} ${isFuture ? 'is-future' : ''}`} key={`${weekday}-${date}`}><span>{weekday}</span><strong>{date}</strong><b>{word || '—'}</b><small>{word ? <><Waves />{isToday ? 37 + submitted.length * 11 : echoes}</> : 'Not yet'}</small></article>;
         })}</div>
       </section>)}</div>
-      <button className="reset-demo" onClick={reset}>Reset today&apos;s demo word</button>
     </section>
   );
 }
@@ -270,17 +269,11 @@ export default function CozyPreview() {
       return next;
     });
   }
-  function reset() {
-    window.localStorage.removeItem(`wurd:daily:${dayKey}`);
-    window.localStorage.removeItem(`wurd:echoes:${dayKey}`);
-    setSubmittedState(''); setEchoed([]); setTab('today');
-  }
-
   return (
-    <main className={`cozy-stage ${tab === 'today' && submitted ? 'today-app' : ''}`}><section className="cozy-shell"><BrandHeader submitted={submitted} compact={tab === 'today'} xp={852 + echoed.length} /><div className="cozy-main">
+    <main className={`cozy-stage fixed-app active-${tab} ${tab === 'today' && submitted ? 'today-app' : ''}`}><section className="cozy-shell"><BrandHeader submitted={submitted} compact={tab === 'today'} xp={852 + echoed.length} /><div className="cozy-main">
       {tab === 'today' && <TodayTab submitted={submitted} setSubmitted={postWord} echoed={echoed} toggleEcho={toggleEcho} />}
       {tab === 'world' && <WorldTab />}
-      {tab === 'you' && <YouTab submitted={submitted} reset={reset} xp={852 + echoed.length} />}
+      {tab === 'you' && <YouTab submitted={submitted} xp={852 + echoed.length} />}
     </div><nav className="cozy-nav" aria-label="App navigation">{tabs.map(item => {
       const locked = !submitted && item.id === 'world';
       return <button key={item.id} className={`${tab === item.id ? 'active' : ''} ${locked ? 'locked' : ''}`} disabled={locked} title={locked ? 'Post today’s word to unlock' : item.label} onClick={() => setTab(item.id)}><item.icon />{locked && <Lock className="nav-lock" />}<span>{item.label}</span></button>;

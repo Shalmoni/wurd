@@ -382,3 +382,112 @@ button { cursor: pointer; }
   .day-cell > strong { font-size: 17px; }
   .day-cell > b { font-size: 11px; }
 }
+
+/* Every screen is an app canvas: vertical page scrolling is never part of WURD. */
+html, body, #root { height: 100%; overflow: hidden; overscroll-behavior: none; }
+.fixed-app { height: 100svh; height: 100dvh; min-height: 0; overflow: hidden; }
+.fixed-app .cozy-shell { height: calc(100svh - 56px); height: calc(100dvh - 56px); min-height: 0; }
+.fixed-app .cozy-main { flex: 1 1 auto; min-height: 0; overflow: hidden; }
+.fixed-app .tab-view { min-height: 0; overflow: hidden; }
+.fixed-app .cozy-nav { position: relative; bottom: auto; flex-shrink: 0; }
+
+/* The non-feed header also has to participate in the fixed-height layout. */
+.fixed-app:not(.today-app) .cozy-header {
+  min-height: 104px;
+  flex: 0 0 clamp(104px, 16svh, 138px);
+  flex-basis: clamp(104px, 16dvh, 138px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 12px 20px 8px;
+}
+.fixed-app:not(.today-app) .cozy-header > p { margin: 10px 0 0; font-size: 15px; }
+.fixed-app:not(.today-app) .your-word-header > strong { font-size: clamp(29px, 5.5svh, 44px); }
+.fixed-app:not(.today-app) .your-word-header > span { margin-top: 5px; }
+
+/* The locked daily prompt scales inside the available canvas. */
+.fixed-app.active-today:not(.today-app) .today-view { display: flex; padding-top: 8px; padding-bottom: 8px; }
+.fixed-app.active-today:not(.today-app) .daily-prompt { width: 100%; min-height: 0; }
+
+/* World: title + controls + visualization + rewind divide the remaining height. */
+.fixed-app.active-world .world-view { display: flex; flex-direction: column; padding-top: 10px; padding-bottom: 0; }
+.fixed-app.active-world .cozy-title { flex: 0 0 auto; margin-bottom: 9px; }
+.fixed-app.active-world .cozy-title h1 { font-size: clamp(31px, 5svh, 45px); }
+.fixed-app.active-world .scope-only { min-height: 38px; height: 38px; flex: 0 0 38px; margin-bottom: 8px; }
+.fixed-app.active-world .real-map,
+.fixed-app.active-world .nearby-cloud { flex: 1 1 auto; min-height: 0; }
+.fixed-app.active-world .rewind-strip { height: 54px; flex: 0 0 54px; }
+
+/* You: compact fixed rows above a calendar that uses exactly the space left. */
+.fixed-app.active-you .you-view { display: flex; flex-direction: column; padding-top: 10px; padding-bottom: 10px; overflow: hidden; }
+.fixed-app.active-you .profile-simple { min-height: 0; flex: 0 0 62px; padding: 0 0 8px; box-sizing: border-box; }
+.fixed-app.active-you .profile-ring { width: 52px; height: 52px; }
+.fixed-app.active-you .profile-cozy h1 { font-size: 28px; }
+.fixed-app.active-you .progress-card { min-height: 0; flex: 0 0 clamp(94px, 15svh, 116px); flex-basis: clamp(94px, 15dvh, 116px); margin: 9px 0 12px; }
+.fixed-app.active-you .level-progress,
+.fixed-app.active-you .streak-multiplier { height: 100%; min-height: 0; box-sizing: border-box; }
+.fixed-app.active-you .level-progress { padding: 11px 14px; }
+.fixed-app.active-you .xp-track { margin: 10px 0 7px; }
+.fixed-app.active-you .streak-multiplier > b { margin-top: 7px; }
+.fixed-app.active-you .calendar-head { min-height: 0; flex: 0 0 42px; margin: 0 2px 7px; }
+.fixed-app.active-you .calendar-head h2 { font-size: 21px; }
+.fixed-app.active-you .week-track { flex: 1 1 auto; min-height: 0; overflow-x: auto; overflow-y: hidden; }
+.fixed-app.active-you .week-page { height: 100%; min-height: 0; display: flex; flex-direction: column; box-sizing: border-box; }
+.fixed-app.active-you .week-page h3 { flex: 0 0 auto; margin-bottom: 7px; }
+.fixed-app.active-you .week-grid { flex: 1 1 auto; min-height: 0; grid-template-rows: repeat(2, minmax(0, 1fr)); }
+.fixed-app.active-you .day-cell { min-height: 0; }
+
+@media (max-width: 620px) {
+  .fixed-app { padding: 0; }
+  .fixed-app .cozy-shell { height: 100svh; height: 100dvh; min-height: 0; }
+  .fixed-app .cozy-main { min-height: 0; }
+  .fixed-app .cozy-nav {
+    height: calc(58px + env(safe-area-inset-bottom));
+    flex-basis: calc(58px + env(safe-area-inset-bottom));
+    padding-bottom: env(safe-area-inset-bottom);
+    box-sizing: border-box;
+  }
+  .fixed-app.active-world .real-map,
+  .fixed-app.active-world .nearby-cloud { margin-left: -18px; margin-right: -18px; }
+  .fixed-app.active-you .you-view { padding-left: 12px; padding-right: 12px; }
+  .fixed-app.active-you .profile-simple { grid-template-columns: 54px 1fr; }
+  .fixed-app.active-you .progress-card { grid-template-columns: minmax(0, 1fr) 92px; }
+  .fixed-app.active-you .week-page { padding: 8px; }
+  .fixed-app.active-you .day-cell { padding: 6px; }
+}
+
+@media (max-height: 700px) {
+  .fixed-app:not(.today-app) .cozy-header { min-height: 88px; flex-basis: 88px; padding-top: 7px; padding-bottom: 5px; }
+  .fixed-app:not(.today-app) .cozy-header > p { margin-top: 5px; font-size: 13px; }
+  .fixed-app:not(.today-app) .cozy-logo { font-size: 38px; }
+  .fixed-app:not(.today-app) .your-word-header > strong { font-size: 29px; }
+  .fixed-app.active-today:not(.today-app) .daily-prompt > p { margin-top: 12px; }
+  .fixed-app.active-today:not(.today-app) .daily-prompt h1 { font-size: 44px; }
+  .fixed-app.active-today:not(.today-app) .daily-prompt > small { margin-top: 10px; }
+  .fixed-app.active-today:not(.today-app) .daily-prompt form { margin-top: 16px; }
+  .fixed-app.active-world .world-view { padding-top: 6px; }
+  .fixed-app.active-world .cozy-title { margin-bottom: 5px; }
+  .fixed-app.active-world .cozy-title h1 { font-size: 29px; }
+  .fixed-app.active-world .scope-only { height: 34px; min-height: 34px; flex-basis: 34px; margin-bottom: 5px; }
+  .fixed-app.active-world .rewind-strip { height: 46px; flex-basis: 46px; }
+  .fixed-app.active-you .you-view { padding-top: 6px; padding-bottom: 6px; }
+  .fixed-app.active-you .profile-simple { flex-basis: 51px; padding-bottom: 5px; }
+  .fixed-app.active-you .profile-ring { width: 44px; height: 44px; }
+  .fixed-app.active-you .profile-cozy h1 { font-size: 23px; }
+  .fixed-app.active-you .progress-card { flex-basis: 84px; margin: 6px 0 7px; }
+  .fixed-app.active-you .level-progress { padding: 8px 10px; }
+  .fixed-app.active-you .level-progress > div:first-child strong { font-size: 17px; }
+  .fixed-app.active-you .xp-track { height: 7px; margin: 7px 0 5px; }
+  .fixed-app.active-you .streak-multiplier > strong { font-size: 22px; }
+  .fixed-app.active-you .streak-multiplier > b { margin-top: 4px; font-size: 14px; }
+  .fixed-app.active-you .calendar-head { flex-basis: 34px; margin-bottom: 5px; }
+  .fixed-app.active-you .calendar-head span { display: none; }
+  .fixed-app.active-you .calendar-head h2 { font-size: 18px; }
+  .fixed-app.active-you .week-page { padding: 6px; }
+  .fixed-app.active-you .week-grid { gap: 4px; }
+  .fixed-app.active-you .day-cell { padding: 5px; }
+  .fixed-app.active-you .day-cell > strong { margin-top: 2px; font-size: 15px; }
+  .fixed-app.active-you .day-cell > b { margin-bottom: 3px; font-size: 10px; }
+}
