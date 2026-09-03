@@ -95,7 +95,7 @@ function BrandHeader({ submitted, xp }: { submitted: string; xp: number }) {
   const levelProgress = Math.min(100, Math.max(0, (xp - 600) / 4));
   if (submitted) return (
     <header className="today-app-header">
-      <div className="today-brand-row"><div className="today-brand">WURD</div><div className="header-xp"><Sparkles /><span><strong>{xp} XP</strong><small>LEVEL 4</small><em><Flame />12 days <b>1.2×</b></em><i><b style={{ width: `${levelProgress}%` }} /></i></span></div></div>
+      <div className="today-brand-row"><div className="today-brand">WURD</div><div className="header-xp"><Sparkles /><strong>{xp} XP</strong><span className="xp-level"><small>L4</small><i><b style={{ width: `${levelProgress}%` }} /></i></span><span className="xp-streak"><Flame />12</span><em>1.2×</em></div></div>
       <strong className="today-word">{submitted}</strong>
       <div className="today-meta-row"><p>{todayLabel()}</p><span><Waves />{anonymousEchoes}</span></div>
     </header>
@@ -127,7 +127,7 @@ function TodayTab({ submitted, setSubmitted, echoed, toggleEcho }: { submitted: 
   }
   if (!submitted) return (
     <section className="tab-view today-view"><div className="daily-prompt">
-      {!pending ? <><span className="soft-icon"><Sun /></span><p>YOUR ONE POST TODAY</p><h1>What&apos;s your<br />word?</h1><small>Choose the single word that represents your day.</small><form onSubmit={submit}><Input autoFocus maxLength={24} value={draft} onChange={event => { setDraft(event.target.value); setError(''); }} placeholder="TYPE YOUR WORD" /><Button type="submit">Continue</Button></form><em>{error || 'Everything else unlocks after you post.'}</em></> :
+      {!pending ? <><span className="soft-icon"><Sun /></span><p>YOUR ONE POST TODAY</p><h1>What&apos;s your<br />word?</h1><small>Choose the single word that represents your day.</small><form onSubmit={submit}><Input autoFocus maxLength={20} value={draft} onChange={event => { setDraft(event.target.value); setError(''); }} placeholder="TYPE YOUR WORD" /><Button type="submit">Continue</Button></form><em>{error || 'One word, up to 20 letters. Everything else unlocks after you post.'}</em></> :
       <div className="confirm-word"><span>YOUR WORD FOR {todayLabel().toUpperCase()}</span><h2>{pending}</h2><p>This is the only word you can post today. At midnight, you&apos;ll get a new one.</p><div><Button variant="outline" onClick={() => setPending('')}>Go back</Button><Button onClick={() => setSubmitted(pending)}>Post my word</Button></div></div>}
     </div></section>
   );
@@ -194,13 +194,13 @@ function YouTab({ submitted }: { submitted: string }) {
   const dayTrack = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
-      if (dayTrack.current) dayTrack.current.scrollLeft = dayTrack.current.scrollWidth;
+      if (dayTrack.current) dayTrack.current.scrollTop = dayTrack.current.scrollHeight;
     });
     return () => window.cancelAnimationFrame(frame);
   }, []);
   return (
     <section className="tab-view you-view"><div className="profile-cozy profile-simple"><div className="profile-ring"><span>OS</span></div><div><span>YOUR ONE-WORD DIARY</span><h1>Otsar</h1><p><MapPin /> Tel Aviv</p></div></div>
-      <div className="calendar-head"><div><span>YOUR WORD CALENDAR</span><h2>Your last 14 days</h2></div><small>SWIPE DAYS →</small></div>
+      <div className="calendar-head"><div><span>YOUR WORD CALENDAR</span><h2>Your last 14 days</h2></div><small>SWIPE DAYS ↑</small></div>
       <div className="day-ribbon" ref={dayTrack} aria-label="Your words from the last 14 days">{wordDays.map(([weekday, date, storedWord, echoes], index) => {
         const isToday = index === wordDays.length - 1;
         const word = isToday ? submitted : storedWord;
