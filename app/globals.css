@@ -272,3 +272,56 @@ button { cursor: pointer; }
   .friends-card-grid { gap: 6px; }
   .friend-square { min-height: 160px; }
 }
+
+/* Fixed-height Today app, based on the edited mobile composition */
+.today-app { height: 100svh; min-height: 0; overflow: hidden; }
+.today-app .cozy-shell { height: calc(100svh - 56px); min-height: 0; }
+.today-app .cozy-main { min-height: 0; overflow: hidden; }
+.today-app-header { min-height: clamp(158px, 23svh, 214px); flex: 0 0 clamp(158px, 23svh, 214px); display: grid; grid-template-rows: auto 1fr auto; padding: 18px 22px 14px; border-bottom: 1px solid #e6f0ec; background: #fff; }
+.today-brand-row, .today-meta-row { display: flex; align-items: center; justify-content: space-between; }
+.today-brand { color: #00b979; font-size: 29px; line-height: 1; font-weight: 900; letter-spacing: -.07em; }
+.header-xp { display: flex; align-items: center; gap: 6px; padding: 9px 13px; border: 1px solid #c5eedf; border-radius: 999px; background: #effff9; color: #008e5c; }
+.header-xp svg { width: 13px; height: 13px; }
+.header-xp strong { font-size: 10px; }
+.header-xp small { color: #6c8179; font-size: 7px; font-weight: 800; letter-spacing: .08em; }
+.today-word { align-self: center; justify-self: center; max-width: 92%; color: #00b979; font-size: clamp(36px, 8vw, 58px); line-height: .86; font-weight: 900; letter-spacing: -.075em; overflow-wrap: anywhere; }
+.today-meta-row p { margin: 0; font-family: Georgia, 'Times New Roman', serif; font-size: 17px; }
+.today-meta-row span { display: flex; align-items: center; gap: 8px; color: #647970; font-size: 16px; font-weight: 750; }
+.today-meta-row svg { width: 15px; height: 15px; color: #00b979; }
+.today-app .live-view { min-height: 0; display: flex; flex-direction: column; padding-top: 10px; padding-bottom: 10px; overflow: hidden; }
+.today-toolbar { min-height: 42px; flex: 0 0 42px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; padding: 0 2px; }
+.today-toolbar > span { display: flex; align-items: center; gap: 8px; color: #61766d; font-size: 10px; font-weight: 750; }
+.today-toolbar > span i { width: 7px; height: 7px; border-radius: 50%; background: #00e695; }
+.today-toolbar .today-mode { width: 132px; min-height: 36px; height: 36px; margin: 0; padding: 2px; }
+.today-toolbar .today-mode button { font-size: 9px; font-weight: 750; }
+.today-app .live-grid, .today-app .friends-card-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(4, minmax(0, 1fr)); gap: clamp(6px, 1.1svh, 11px); padding-bottom: 0; }
+.today-app .live-card, .today-app .friend-square { position: relative; min-height: 0; height: auto; padding: clamp(9px, 1.25svh, 13px); border-radius: 17px; }
+.today-app .live-person { justify-content: space-between; }
+.today-app .live-person [data-slot='avatar'] { order: 2; width: clamp(25px, 3.8svh, 34px); height: clamp(25px, 3.8svh, 34px); }
+.today-app .live-person > span { order: 1; }
+.today-app .live-word { margin: auto 32px 0 0; font-size: clamp(17px, 3.2svh, 26px); }
+.today-app .echo-count { position: absolute; right: clamp(9px, 1.25svh, 13px); bottom: clamp(9px, 1.25svh, 13px); }
+.today-app .same-word-label { position: absolute; left: clamp(9px, 1.25svh, 13px); bottom: 7px; margin: 0; }
+.today-app .friend-square:has(.same-word-label) .live-word { margin: auto 32px 15px 0; }
+.today-app .cozy-nav { height: 72px; flex-basis: 72px; }
+
+@media (max-width: 620px) {
+  .today-app { padding: 0; }
+  .today-app .cozy-shell { height: 100svh; }
+  .today-app-header { padding: max(15px, env(safe-area-inset-top)) 18px 12px; }
+  .today-app .live-view { padding-left: 13px; padding-right: 13px; }
+  .today-app .cozy-nav { height: calc(64px + env(safe-area-inset-bottom)); flex-basis: calc(64px + env(safe-area-inset-bottom)); padding-bottom: env(safe-area-inset-bottom); }
+  .today-brand { font-size: 26px; }
+  .today-meta-row p { font-size: 15px; }
+  .today-meta-row span { font-size: 14px; }
+}
+
+@media (max-height: 700px) {
+  .today-app-header { min-height: 145px; flex-basis: 145px; }
+  .today-app .live-view { padding-top: 6px; padding-bottom: 6px; }
+  .today-toolbar { min-height: 36px; flex-basis: 36px; margin-bottom: 6px; }
+  .today-toolbar .today-mode { height: 32px; min-height: 32px; }
+  .today-app .cozy-nav { height: 58px; flex-basis: 58px; }
+  .today-app .live-word { font-size: 16px; }
+  .today-app .live-person small { display: none; }
+}

@@ -85,11 +85,18 @@ function localDayKey() {
 }
 
 function todayLabel() {
-  return new Intl.DateTimeFormat('en', { month: 'long', day: 'numeric' }).format(new Date());
+  return new Intl.DateTimeFormat('en', { month: 'long', day: 'numeric', year: 'numeric' }).format(new Date());
 }
 
-function BrandHeader({ submitted }: { submitted: string }) {
+function BrandHeader({ submitted, compact, xp }: { submitted: string; compact: boolean; xp: number }) {
   const anonymousEchoes = submitted ? 37 + submitted.length * 11 : 0;
+  if (submitted && compact) return (
+    <header className="today-app-header">
+      <div className="today-brand-row"><div className="today-brand">WURD</div><div className="header-xp"><Sparkles /><strong>{xp} XP</strong><small>LEVEL 4</small></div></div>
+      <strong className="today-word">{submitted}</strong>
+      <div className="today-meta-row"><p>{todayLabel()}</p><span><Waves />{anonymousEchoes}</span></div>
+    </header>
+  );
   return <header className="cozy-header">{submitted ? <div className="your-word-header"><strong>{submitted}</strong><span><Waves />{anonymousEchoes}</span></div> : <div className="cozy-logo">wurd</div>}<p>{todayLabel()}</p></header>;
 }
 
@@ -122,15 +129,12 @@ function TodayTab({ submitted, setSubmitted, echoed, toggleEcho }: { submitted: 
     </div></section>
   );
   const topPeople = [...livePeople].sort((left, right) => right[6] - left[6]).slice(0, 8);
-  const xp = 852 + echoed.length;
   return (
     <section className="tab-view live-view">
-      <div className="today-mode cozy-segments"><button className={feedMode === 'Top today' ? 'active' : ''} onClick={() => setFeedMode('Top today')}>Top today</button><button className={feedMode === 'Friends' ? 'active' : ''} onClick={() => setFeedMode('Friends')}>Friends</button></div>
-      <div className="today-status"><span><i />1,284 spoke</span><span className="today-xp"><Sparkles /><strong>{xp} XP</strong><small>LEVEL 4</small></span></div>
+      <div className="today-toolbar"><span><i />{feedMode === 'Top today' ? '1,284 spoke' : '8 of 12 spoke'}</span><div className="today-mode cozy-segments"><button className={feedMode === 'Top today' ? 'active' : ''} onClick={() => setFeedMode('Top today')}>Top</button><button className={feedMode === 'Friends' ? 'active' : ''} onClick={() => setFeedMode('Friends')}>Friends</button></div></div>
       {feedMode === 'Top today' ? <>
         <div className="live-grid">{topPeople.map((person, index) => <LiveCard key={`${person[0]}-${person[2]}`} person={person} echoed={echoed.includes(`live-${index}`)} onEcho={() => toggleEcho(`live-${index}`)} />)}</div>
       </> : <>
-        <div className="view-title inline-friends-title"><div><span>YOUR FRIENDS</span><h1>Your people<br />today</h1></div><b>8 of 12 spoke</b></div>
         <div className="friends-card-grid">{friends.map(friend => <FriendCard key={friend.id} friend={friend} match={friend.word === submitted} echoed={echoed.includes(friend.id)} onEcho={() => toggleEcho(friend.id)} />)}</div>
       </>}
     </section>
@@ -236,7 +240,7 @@ export default function CozyPreview() {
   }
 
   return (
-    <main className="cozy-stage"><section className="cozy-shell"><BrandHeader submitted={submitted} /><div className="cozy-main">
+    <main className={`cozy-stage ${tab === 'today' && submitted ? 'today-app' : ''}`}><section className="cozy-shell"><BrandHeader submitted={submitted} compact={tab === 'today'} xp={852 + echoed.length} /><div className="cozy-main">
       {tab === 'today' && <TodayTab submitted={submitted} setSubmitted={postWord} echoed={echoed} toggleEcho={toggleEcho} />}
       {tab === 'world' && <WorldTab />}
       {tab === 'you' && <YouTab submitted={submitted} reset={reset} />}
