@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { SyntheticEvent } from 'react';
-import { isAuthSessionMissingError, type User } from '@supabase/supabase-js';
+import type { User } from '@supabase/supabase-js';
 import {
   CircleUserRound, Flame, Globe2, Lock,
   Sparkles, Sun, Waves,
@@ -334,7 +334,7 @@ export default function CozyPreview() {
     let live = true;
     void supabase.auth.getUser().then(async ({ data, error }) => {
       if (!live) return;
-      if (error && !isAuthSessionMissingError(error)) setAppError(error.message);
+      if (error && error.name !== 'AuthSessionMissingError') setAppError(error.message);
       setUser(data.user);
       try { if (data.user) await loadAccount(data.user); } catch (reason) { setAppError(reason instanceof Error ? reason.message : 'Could not load your account.'); }
       if (live) setAuthLoading(false);
