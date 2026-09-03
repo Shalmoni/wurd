@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import {
-  CircleUserRound, Flame, Globe2, Lock, MapPin,
+  CircleUserRound, Flame, Globe2, Lock,
   Sparkles, Sun, Waves,
 } from 'lucide-react';
 import { geoMercator, geoNaturalEarth1, geoPath } from 'd3-geo';
@@ -199,8 +199,8 @@ function YouTab({ submitted }: { submitted: string }) {
     return () => window.cancelAnimationFrame(frame);
   }, []);
   return (
-    <section className="tab-view you-view"><div className="profile-cozy profile-simple"><div className="profile-ring"><span>OS</span></div><div><span>YOUR ONE-WORD DIARY</span><h1>Otsar</h1><p><MapPin /> Tel Aviv</p></div></div>
-      <div className="calendar-head"><div><h2>Your last 14 days</h2></div><small>SWIPE DAYS ↑</small></div>
+    <section className="tab-view you-view"><div className="profile-placeholder" aria-hidden="true" />
+      <div className="calendar-swipe-cue">SWIPE DAYS ↑</div>
       <div className="day-ribbon" ref={dayTrack} aria-label="Your words from the last 14 days">{wordDays.map(([weekday, date, storedWord, echoes], index) => {
         const isToday = index === wordDays.length - 1;
         const word = isToday ? submitted : storedWord;

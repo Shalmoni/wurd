@@ -763,3 +763,22 @@ html, body, #root { height: 100%; overflow: hidden; overscroll-behavior: none; }
 }
 .header-xp > .xp-streak { flex: 0 0 auto; font-size: 9px; }
 .header-xp > .xp-streak svg { width: 11px; height: 11px; }
+
+/* Reserved space for the future profile treatment. */
+.fixed-app.active-you .profile-placeholder { flex: 0 0 76px; }
+.fixed-app.active-you .calendar-swipe-cue {
+  flex: 0 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 3px 6px;
+  color: #00a86d;
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: .09em;
+}
+
+@media (max-height: 700px) {
+  .fixed-app.active-you .profile-placeholder { flex-basis: 62px; }
+  .fixed-app.active-you .calendar-swipe-cue { flex-basis: 20px; padding-bottom: 4px; }
+}
