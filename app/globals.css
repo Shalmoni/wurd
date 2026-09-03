@@ -406,6 +406,30 @@ html, body, #root { height: 100%; overflow: hidden; overscroll-behavior: none; }
 .fixed-app:not(.today-app) .cozy-header > p { margin: 10px 0 0; font-size: 15px; }
 .fixed-app:not(.today-app) .your-word-header > strong { font-size: clamp(29px, 5.5svh, 44px); }
 .fixed-app:not(.today-app) .your-word-header > span { margin-top: 5px; }
+.section-app-header {
+  min-height: 104px;
+  flex: 0 0 clamp(104px, 16svh, 138px);
+  flex-basis: clamp(104px, 16dvh, 138px);
+  display: grid;
+  grid-template-rows: 1fr auto;
+  box-sizing: border-box;
+  padding: 12px 22px 10px;
+  border-bottom: 1px solid #e6f0ec;
+  background: #fff;
+}
+.section-word {
+  align-self: center;
+  justify-self: center;
+  max-width: 92%;
+  overflow-wrap: anywhere;
+  color: #00b979;
+  font-size: clamp(30px, 5.5svh, 45px);
+  line-height: .86;
+  font-weight: 900;
+  letter-spacing: -.075em;
+}
+.section-app-header .today-meta-row p { font-size: 15px; }
+.section-app-header .today-meta-row span { font-size: 14px; }
 
 /* The locked daily prompt scales inside the available canvas. */
 .fixed-app.active-today:not(.today-app) .today-view { display: flex; padding-top: 8px; padding-bottom: 8px; }
@@ -456,6 +480,7 @@ html, body, #root { height: 100%; overflow: hidden; overscroll-behavior: none; }
   .fixed-app.active-you .progress-card { grid-template-columns: minmax(0, 1fr) 92px; }
   .fixed-app.active-you .week-page { padding: 8px; }
   .fixed-app.active-you .day-cell { padding: 6px; }
+  .section-app-header { padding: max(10px, env(safe-area-inset-top)) 18px 9px; }
 }
 
 @media (max-height: 700px) {
@@ -463,6 +488,10 @@ html, body, #root { height: 100%; overflow: hidden; overscroll-behavior: none; }
   .fixed-app:not(.today-app) .cozy-header > p { margin-top: 5px; font-size: 13px; }
   .fixed-app:not(.today-app) .cozy-logo { font-size: 38px; }
   .fixed-app:not(.today-app) .your-word-header > strong { font-size: 29px; }
+  .section-app-header { min-height: 88px; flex-basis: 88px; padding-top: 7px; padding-bottom: 6px; }
+  .section-word { font-size: 29px; }
+  .section-app-header .today-meta-row p { font-size: 13px; }
+  .section-app-header .today-meta-row span { font-size: 12px; }
   .fixed-app.active-today:not(.today-app) .daily-prompt > p { margin-top: 12px; }
   .fixed-app.active-today:not(.today-app) .daily-prompt h1 { font-size: 44px; }
   .fixed-app.active-today:not(.today-app) .daily-prompt > small { margin-top: 10px; }

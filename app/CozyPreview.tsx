@@ -117,7 +117,13 @@ function BrandHeader({ submitted, compact, xp }: { submitted: string; compact: b
       <div className="today-meta-row"><p>{todayLabel()}</p><span><Waves />{anonymousEchoes}</span></div>
     </header>
   );
-  return <header className="cozy-header">{submitted ? <div className="your-word-header"><strong>{submitted}</strong><span><Waves />{anonymousEchoes}</span></div> : <div className="cozy-logo">wurd</div>}<p>{todayLabel()}</p></header>;
+  if (submitted) return (
+    <header className="section-app-header">
+      <strong className="section-word">{submitted}</strong>
+      <div className="today-meta-row"><p>{todayLabel()}</p><span><Waves />{anonymousEchoes}</span></div>
+    </header>
+  );
+  return <header className="cozy-header"><div className="cozy-logo">wurd</div><p>{todayLabel()}</p></header>;
 }
 
 function LiveCard({ person, echoed, onEcho }: { person: typeof livePeople[number]; echoed: boolean; onEcho: () => void }) {
