@@ -1,8 +1,8 @@
 'use client';
 
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 import {
-  ChevronRight, CircleUserRound, Flame, Globe2, Lock, MapPin,
+  CircleUserRound, Flame, Globe2, Lock, MapPin,
   Sparkles, Sun, Waves,
 } from 'lucide-react';
 import { geoMercator, geoNaturalEarth1, geoPath } from 'd3-geo';
@@ -73,10 +73,29 @@ const nearbyPositions = [
   ['30%', '60%'], ['75%', '64%'], ['24%', '82%'], ['69%', '84%'],
 ] as const;
 
-const diary = [
-  ['02', 'TODAY'], ['01', 'HOME'], ['31', 'GEMS'], ['30', 'FAMILY'],
-  ['29', 'TIRED'], ['28', 'EXCITED'], ['27', 'BUSY'], ['26', 'SUN'],
-];
+const calendarWeeks = [
+  {
+    label: 'August 23–29',
+    days: [
+      ['Sunday', '23', 'SLOW', 6], ['Monday', '24', 'WORK', 14], ['Tuesday', '25', 'OPEN', 9], ['Wednesday', '26', 'SUN', 18],
+      ['Thursday', '27', 'BUSY', 11], ['Friday', '28', 'EXCITED', 22], ['Saturday', '29', 'TIRED', 31],
+    ],
+  },
+  {
+    label: 'August 30–September 5',
+    days: [
+      ['Sunday', '30', 'FAMILY', 27], ['Monday', '31', 'GEMS', 8], ['Tuesday', '1', 'HOME', 19], ['Wednesday', '2', 'CALM', 16],
+      ['Thursday', '3', 'TODAY', 0], ['Friday', '4', '', 0], ['Saturday', '5', '', 0],
+    ],
+  },
+  {
+    label: 'September 6–12',
+    days: [
+      ['Sunday', '6', '', 0], ['Monday', '7', '', 0], ['Tuesday', '8', '', 0], ['Wednesday', '9', '', 0],
+      ['Thursday', '10', '', 0], ['Friday', '11', '', 0], ['Saturday', '12', '', 0],
+    ],
+  },
+] as const;
 
 function localDayKey() {
   const parts = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
@@ -90,9 +109,10 @@ function todayLabel() {
 
 function BrandHeader({ submitted, compact, xp }: { submitted: string; compact: boolean; xp: number }) {
   const anonymousEchoes = submitted ? 37 + submitted.length * 11 : 0;
+  const levelProgress = Math.min(100, Math.max(0, (xp - 600) / 4));
   if (submitted && compact) return (
     <header className="today-app-header">
-      <div className="today-brand-row"><div className="today-brand">WURD</div><div className="header-xp"><Sparkles /><strong>{xp} XP</strong><small>LEVEL 4</small></div></div>
+      <div className="today-brand-row"><div className="today-brand">WURD</div><div className="header-xp"><Sparkles /><span><strong>{xp} XP</strong><small>LEVEL 4</small><i><b style={{ width: `${levelProgress}%` }} /></i></span></div></div>
       <strong className="today-word">{submitted}</strong>
       <div className="today-meta-row"><p>{todayLabel()}</p><span><Waves />{anonymousEchoes}</span></div>
     </header>
@@ -187,13 +207,30 @@ function WorldTab() {
   );
 }
 
-function YouTab({ submitted, reset }: { submitted: string; reset: () => void }) {
+function YouTab({ submitted, reset, xp }: { submitted: string; reset: () => void; xp: number }) {
+  const weekTrack = useRef<HTMLDivElement>(null);
+  const levelProgress = Math.min(400, Math.max(0, xp - 600));
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      if (weekTrack.current) weekTrack.current.scrollLeft = weekTrack.current.clientWidth + 12;
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
   return (
-    <section className="tab-view you-view"><div className="profile-cozy"><div className="profile-ring"><span>OS</span></div><div><span>YOUR ONE-WORD DIARY</span><h1>Otsar</h1><p><MapPin /> Tel Aviv</p></div><div className="streak-cozy"><Flame /><strong>137</strong><span>day streak</span></div></div>
-      <div className="personal-stats"><div><strong>243</strong><span>days spoken</span></div><div><strong>187</strong><span>unique words</span></div><div><strong>17×</strong><span>most said: family</span></div></div>
-      <div className="diary-head"><div><span>SEPTEMBER 2026</span><h2>Your days in words</h2></div><button>Year view</button></div>
-      <div className="diary-cozy">{diary.map(([day, word], index) => <div key={`${day}-${word}`}><span>{day}</span><strong>{index === 0 ? submitted : word}</strong><i /></div>)}</div>
-      <button className="year-card"><Sparkles /><span><strong>Your year in 365 words</strong><small>A quiet portrait of everything that mattered.</small></span><ChevronRight /></button>
+    <section className="tab-view you-view"><div className="profile-cozy profile-simple"><div className="profile-ring"><span>OS</span></div><div><span>YOUR ONE-WORD DIARY</span><h1>Otsar</h1><p><MapPin /> Tel Aviv</p></div></div>
+      <div className="progress-card">
+        <div className="level-progress"><div><span>LEVEL 4</span><strong>{xp} XP</strong></div><div className="xp-track"><i style={{ width: `${levelProgress / 4}%` }} /></div><p><span>{levelProgress} / 400</span><b>{Math.max(0, 1000 - xp)} XP to Level 5</b></p></div>
+        <div className="streak-multiplier"><Flame /><strong>12</strong><span>day streak</span><b>1.2×</b><small>daily XP</small></div>
+      </div>
+      <div className="calendar-head"><div><span>YOUR WORD CALENDAR</span><h2>Weeks in words</h2></div><small>SWIPE WEEKS →</small></div>
+      <div className="week-track" ref={weekTrack}>{calendarWeeks.map((week, weekIndex) => <section className="week-page" key={week.label} aria-label={week.label}>
+        <h3>{week.label}</h3><div className="week-grid">{week.days.map(([weekday, date, storedWord, echoes], dayIndex) => {
+          const isToday = weekIndex === 1 && dayIndex === 4;
+          const isFuture = weekIndex === 2 || (weekIndex === 1 && dayIndex > 4);
+          const word = isToday ? submitted : storedWord;
+          return <article className={`day-cell ${isToday ? 'is-today' : ''} ${isFuture ? 'is-future' : ''}`} key={`${weekday}-${date}`}><span>{weekday}</span><strong>{date}</strong><b>{word || '—'}</b><small>{word ? <><Waves />{isToday ? 37 + submitted.length * 11 : echoes}</> : 'Not yet'}</small></article>;
+        })}</div>
+      </section>)}</div>
       <button className="reset-demo" onClick={reset}>Reset today&apos;s demo word</button>
     </section>
   );
@@ -243,7 +280,7 @@ export default function CozyPreview() {
     <main className={`cozy-stage ${tab === 'today' && submitted ? 'today-app' : ''}`}><section className="cozy-shell"><BrandHeader submitted={submitted} compact={tab === 'today'} xp={852 + echoed.length} /><div className="cozy-main">
       {tab === 'today' && <TodayTab submitted={submitted} setSubmitted={postWord} echoed={echoed} toggleEcho={toggleEcho} />}
       {tab === 'world' && <WorldTab />}
-      {tab === 'you' && <YouTab submitted={submitted} reset={reset} />}
+      {tab === 'you' && <YouTab submitted={submitted} reset={reset} xp={852 + echoed.length} />}
     </div><nav className="cozy-nav" aria-label="App navigation">{tabs.map(item => {
       const locked = !submitted && item.id === 'world';
       return <button key={item.id} className={`${tab === item.id ? 'active' : ''} ${locked ? 'locked' : ''}`} disabled={locked} title={locked ? 'Post today’s word to unlock' : item.label} onClick={() => setTab(item.id)}><item.icon />{locked && <Lock className="nav-lock" />}<span>{item.label}</span></button>;

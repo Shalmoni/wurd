@@ -325,3 +325,60 @@ button { cursor: pointer; }
   .today-app .live-word { font-size: 16px; }
   .today-app .live-person small { display: none; }
 }
+
+/* XP is progress, not just a score */
+.header-xp > span { display: grid; grid-template-columns: auto auto; align-items: center; column-gap: 6px; }
+.header-xp > span > i { grid-column: 1 / -1; width: 100%; height: 3px; margin-top: 4px; overflow: hidden; border-radius: 999px; background: #ccecdf; }
+.header-xp > span > i > b { display: block; height: 100%; border-radius: inherit; background: #00c982; }
+
+/* You: progress and a swipeable weekly calendar */
+.you-view { overflow-x: hidden; }
+.profile-simple { grid-template-columns: 76px 1fr; padding-bottom: 20px; }
+.progress-card { display: grid; grid-template-columns: minmax(0, 1fr) 116px; gap: 12px; margin: 16px 0 28px; }
+.level-progress, .streak-multiplier { min-height: 132px; border: 1px solid #d8ebe3; border-radius: 22px; background: #fbfffd; }
+.level-progress { display: flex; flex-direction: column; justify-content: center; padding: 18px; }
+.level-progress > div:first-child { display: flex; align-items: end; justify-content: space-between; }
+.level-progress > div:first-child span { color: #00a86d; font-size: 8px; font-weight: 850; letter-spacing: .13em; }
+.level-progress > div:first-child strong { color: #00a86d; font-size: 23px; letter-spacing: -.05em; }
+.xp-track { height: 9px; margin: 15px 0 8px; overflow: hidden; border-radius: 999px; background: #dff2ea; }
+.xp-track i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #00bb79, #00e695); box-shadow: 0 0 12px rgba(0,230,149,.35); }
+.level-progress p { display: flex; justify-content: space-between; margin: 0; color: #84938c; font-size: 8px; }
+.level-progress p b { color: #52685f; font-weight: 700; }
+.streak-multiplier { display: grid; grid-template-columns: auto auto; align-content: center; justify-content: center; column-gap: 5px; padding: 13px; text-align: center; background: #effff9; border-color: #c5efdf; }
+.streak-multiplier svg { width: 17px; color: #00b979; }
+.streak-multiplier > strong { font-size: 28px; line-height: 1; letter-spacing: -.06em; }
+.streak-multiplier > span { grid-column: 1 / -1; margin-top: 2px; color: #71837b; font-size: 8px; }
+.streak-multiplier > b { grid-column: 1 / -1; margin-top: 12px; color: #00a86d; font-size: 18px; }
+.streak-multiplier > small { grid-column: 1 / -1; color: #71837b; font-size: 7px; text-transform: uppercase; letter-spacing: .08em; }
+.calendar-head { display: flex; align-items: end; justify-content: space-between; margin: 0 2px 12px; }
+.calendar-head span { color: #779087; font-size: 8px; font-weight: 850; letter-spacing: .14em; }
+.calendar-head h2 { margin: 3px 0 0; font-size: 25px; letter-spacing: -.05em; }
+.calendar-head > small { padding-bottom: 3px; color: #00a86d; font-size: 7px; font-weight: 800; letter-spacing: .09em; }
+.week-track { width: 100%; display: flex; gap: 12px; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scrollbar-width: none; touch-action: pan-x; }
+.week-track::-webkit-scrollbar { display: none; }
+.week-page { min-width: 100%; flex: 0 0 100%; padding: 13px; border: 1px solid #dfebe6; border-radius: 22px; background: #fff; scroll-snap-align: start; }
+.week-page h3 { margin: 0 2px 11px; color: #60736b; font-size: 10px; font-weight: 750; }
+.week-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.day-cell { min-width: 0; min-height: 118px; display: flex; flex-direction: column; padding: 10px; border: 1px solid #e2ece8; border-radius: 16px; background: #fbfefd; }
+.day-cell > span { overflow: hidden; color: #7a8a83; font-size: 7px; font-weight: 750; text-overflow: ellipsis; text-transform: uppercase; letter-spacing: .05em; }
+.day-cell > strong { margin-top: 6px; color: #203029; font: 700 19px Georgia, 'Times New Roman', serif; }
+.day-cell > b { margin: auto 0 7px; overflow: hidden; color: #00a86d; font-size: clamp(12px, 2.2vw, 17px); letter-spacing: -.04em; text-overflow: ellipsis; }
+.day-cell > small { display: flex; align-items: center; gap: 4px; color: #71847c; font-size: 7px; }
+.day-cell > small svg { width: 10px; height: 10px; color: #00b979; }
+.day-cell.is-today { border: 2px solid #00e695; background: #effff9; box-shadow: 0 8px 22px rgba(0,201,130,.09); }
+.day-cell.is-future { border-style: dashed; background: #fafcfb; opacity: .5; }
+
+@media (max-width: 620px) {
+  .you-view { padding: 15px 14px 22px; }
+  .profile-simple { grid-template-columns: 60px 1fr; }
+  .progress-card { grid-template-columns: minmax(0, 1fr) 104px; gap: 8px; margin-bottom: 24px; }
+  .level-progress, .streak-multiplier { min-height: 122px; border-radius: 18px; }
+  .level-progress { padding: 14px; }
+  .level-progress > div:first-child strong { font-size: 20px; }
+  .week-page { padding: 10px; border-radius: 18px; }
+  .week-grid { gap: 5px; }
+  .day-cell { min-height: 106px; padding: 7px; border-radius: 13px; }
+  .day-cell > span { font-size: 6px; }
+  .day-cell > strong { font-size: 17px; }
+  .day-cell > b { font-size: 11px; }
+}
