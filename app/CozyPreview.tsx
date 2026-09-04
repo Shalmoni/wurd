@@ -159,14 +159,14 @@ function BrandHeader({ tab, submitted, submittedAt, now, emoji, color, echoes, x
   if (tab === 'you') return (
     <header className="today-app-header you-identity-header">
       {topRow}
-      <div className="you-identity"><strong>@{username || 'username'}</strong><span><i>since</i><b>{memberSinceLabel(memberSince)}</b>{submittedAt && <em>· {postedAgoLabel(submittedAt, now)}</em>}</span></div>
+      <div className="you-identity"><strong>@{username || 'username'}</strong><span><i>since</i><b>{memberSinceLabel(memberSince)}</b></span></div>
     </header>
   );
   if (submitted) return (
     <header className="today-app-header">
       {topRow}
       <strong className="today-word" style={{ color: wordColorValues[color] }}>{submitted}{emoji && <span className="today-emoji"> {emoji}</span>}</strong>
-      <div className="today-meta-row"><p>{todayLabel()}</p><span><Waves />{echoes}</span></div>
+      <div className="today-meta-row"><p>{submittedAt ? postedAgoLabel(submittedAt, now) : 'just now'}</p><span><Waves />{echoes}</span></div>
     </header>
   );
   return <header className="cozy-header"><div className="cozy-logo">wurd</div></header>;

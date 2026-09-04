@@ -1091,13 +1091,6 @@ html, body, #root { height: 100%; overflow: hidden; overscroll-behavior: none; }
   font-size: clamp(10px, 2.6vw, 13px);
   font-weight: 650;
 }
-.you-identity span em {
-  color: #53675f;
-  font-size: clamp(9px, 2.35vw, 12px);
-  font-style: normal;
-  font-weight: 650;
-}
-
 .diary-day-card > span { font-size: 13px; }
 .diary-day-card > .day-date i { margin-bottom: 3px; font-size: 14px; }
 .diary-day-card > small { gap: 6px; font-size: 15px; font-weight: 800; }
