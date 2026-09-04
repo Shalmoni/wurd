@@ -116,15 +116,6 @@ function memberSinceLabel(value?: string | null) {
   return new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(value));
 }
 
-function postedAgoLabel(value?: string | null, now = Date.now()) {
-  if (!value) return '';
-  const minutes = Math.max(0, Math.floor((now - new Date(value).getTime()) / 60000));
-  if (minutes < 1) return 'just now';
-  if (minutes < 60) return `${minutes} ${minutes === 1 ? 'minute' : 'minutes'} ago`;
-  const hours = Math.floor(minutes / 60);
-  return `${hours} ${hours === 1 ? 'hour' : 'hours'} ago`;
-}
-
 function isWithinTodayWindow(value: string, now = Date.now()) {
   const postedAt = new Date(value).getTime();
   return Number.isFinite(postedAt) && postedAt <= now && postedAt > now - 24 * 60 * 60 * 1000;
@@ -152,7 +143,19 @@ function readableError(reason: unknown, fallback: string) {
   return fallback;
 }
 
-function BrandHeader({ tab, submitted, submittedAt, now, emoji, color, echoes, xp, level, streak, username, memberSince }: { tab: Tab; submitted: string; submittedAt?: string | null; now: number; emoji: string | null; color: WordColor; echoes: number; xp: number; level: number; streak: number; username?: string; memberSince?: string | null }) {
+function locationLabel(city?: string | null, countryCode?: string | null) {
+  if (!city) return 'Location not added';
+  const displayCity = city.normalize('NFD').replace(/\u0331/g, '').normalize('NFC');
+  if (!countryCode) return displayCity;
+  try {
+    const country = new Intl.DisplayNames(['en'], { type: 'region' }).of(countryCode.toUpperCase());
+    return country ? `${displayCity}, ${country}` : displayCity;
+  } catch {
+    return displayCity;
+  }
+}
+
+function BrandHeader({ tab, submitted, submittedAt, now, emoji, color, echoes, xp, level, streak, username, memberSince, city, countryCode }: { tab: Tab; submitted: string; submittedAt?: string | null; now: number; emoji: string | null; color: WordColor; echoes: number; xp: number; level: number; streak: number; username?: string; memberSince?: string | null; city?: string | null; countryCode?: string | null }) {
   const levelProgress = levelProgressFor(xp, level);
   const multiplier = multiplierForStreak(streak);
   const topRow = <div className="today-brand-row"><div className="today-brand">wurd</div><div className="header-xp"><strong className="xp-total"><span className="xp-prefix">XP</span>{xp}</strong><em>{multiplier.toFixed(1)}×</em><i className="xp-bar"><b style={{ width: `${levelProgress}%` }} /></i><span className="xp-streak"><Flame />{streak}</span></div></div>;
@@ -166,7 +169,7 @@ function BrandHeader({ tab, submitted, submittedAt, now, emoji, color, echoes, x
     <header className="today-app-header">
       {topRow}
       <strong className="today-word" style={{ color: wordColorValues[color] }}>{submitted}{emoji && <span className="today-emoji"> {emoji}</span>}</strong>
-      <div className="today-meta-row"><p>{submittedAt ? postedAgoLabel(submittedAt, now) : 'just now'}</p><span><Waves />{echoes}</span></div>
+      <div className="today-meta-row"><p>{submittedAt ? timeAgo(submittedAt, now) : 'now'} · {locationLabel(city, countryCode)}</p><span><Waves />{echoes}</span></div>
     </header>
   );
   return <header className="cozy-header"><div className="cozy-logo">wurd</div></header>;
@@ -183,8 +186,8 @@ function LiveCard({ person, echoed, onEcho }: { person: typeof livePeople[number
   );
 }
 
-function timeAgo(value: string) {
-  const minutes = Math.max(0, Math.floor((Date.now() - new Date(value).getTime()) / 60000));
+function timeAgo(value: string, now = Date.now()) {
+  const minutes = Math.max(0, Math.floor((now - new Date(value).getTime()) / 60000));
   if (minutes < 1) return 'now';
   if (minutes < 60) return `${minutes}m`;
   return `${Math.floor(minutes / 60)}h`;
@@ -677,7 +680,7 @@ export default function CozyPreview() {
   const streak = profile?.streak_days ?? 12;
   const ownEchoes = history.find(item => item.local_date === dayKey)?.echo_count ?? (submitted ? 37 + submitted.length * 11 : 0);
   return (
-    <main className={`cozy-stage fixed-app active-${tab} ${submitted || tab === 'you' ? 'today-app' : ''}`}><section className="cozy-shell"><BrandHeader tab={tab} submitted={submitted} submittedAt={submittedAt} now={clockNow} emoji={submittedEmoji} color={submittedColor} echoes={ownEchoes} xp={xp} level={level} streak={streak} username={profile?.username} memberSince={profile?.created_at} /><div className="cozy-main">
+    <main className={`cozy-stage fixed-app active-${tab} ${submitted || tab === 'you' ? 'today-app' : ''}`}><section className="cozy-shell"><BrandHeader tab={tab} submitted={submitted} submittedAt={submittedAt} now={clockNow} emoji={submittedEmoji} color={submittedColor} echoes={ownEchoes} xp={xp} level={level} streak={streak} username={profile?.username} memberSince={profile?.created_at} city={profile?.city} countryCode={profile?.country_code} /><div className="cozy-main">
       {appError && <button className="app-error" onClick={() => setAppError('')}>{appError}</button>}
       {tab === 'today' && <TodayTab submitted={submitted} level={level} feed={feed.filter(item => isWithinTodayWindow(item.created_at, clockNow))} feedLoading={feedLoading} spokeCount={spokeCount} feedMode={feedMode} setFeedMode={setFeedMode} setSubmitted={postWord} echoed={echoed} toggleEcho={toggleEcho} />}
       {tab === 'world' && <WorldTab />}

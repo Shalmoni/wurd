@@ -1034,6 +1034,14 @@ html, body, #root { height: 100%; overflow: hidden; overscroll-behavior: none; }
 
 .today-meta-row span { font-size: 18px; }
 .today-meta-row svg { width: 19px; height: 19px; }
+.today-meta-row p {
+  min-width: 0;
+  overflow: hidden;
+  padding-right: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.today-meta-row > span { flex: 0 0 auto; }
 .today-toolbar { min-height: 44px; flex-basis: 44px; }
 .today-toolbar > span { font-size: 20px; }
 .today-toolbar > span i { width: 9px; height: 9px; }
