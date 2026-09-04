@@ -1007,6 +1007,26 @@ html, body, #root { height: 100%; overflow: hidden; overscroll-behavior: none; }
 .header-xp > .xp-streak { font-size: 11px; }
 .header-xp > .xp-streak svg { width: 13px; height: 13px; }
 
+/* Keep the pill's typography and icons on one optical centerline. The
+   multiplier belongs to the progress track, so their gap is intentionally
+   tighter than the gaps between the other values. */
+.header-xp {
+  justify-content: center;
+  align-items: center;
+  column-gap: 6px;
+}
+.header-xp > .xp-total,
+.header-xp > em,
+.header-xp > .xp-streak {
+  min-height: 16px;
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+}
+.header-xp > em { margin-right: -3px; }
+.header-xp > .xp-bar { align-self: center; }
+.header-xp > .xp-streak svg { display: block; }
+
 .today-meta-row span { font-size: 18px; }
 .today-meta-row svg { width: 19px; height: 19px; }
 .today-toolbar { min-height: 44px; flex-basis: 44px; }
