@@ -144,6 +144,10 @@ function readableError(reason: unknown, fallback: string) {
   return fallback;
 }
 
+function usernameLabel(username?: string | null) {
+  return `@${(username || 'username').replace(/^@+/, '')}`;
+}
+
 function isInvalidLocalSession(reason: unknown) {
   const message = readableError(reason, '');
   return /(?:jwt.*future|issued.*future|clock.*skew|user from sub claim in jwt does not exist)/i.test(message);
@@ -168,7 +172,7 @@ function BrandHeader({ tab, submitted, submittedAt, now, emoji, color, echoes, x
   if (tab === 'you') return (
     <header className="today-app-header you-identity-header">
       {topRow}
-      <div className="you-identity"><strong>@{username || 'username'}</strong><span><i>since</i><b>{memberSinceLabel(memberSince)}</b></span></div>
+      <div className="you-identity"><strong>{usernameLabel(username)}</strong><span><i>since</i><b>{memberSinceLabel(memberSince)}</b></span></div>
     </header>
   );
   if (submitted) return (
@@ -213,7 +217,7 @@ function timeAgo(value: string, now = Date.now()) {
 }
 
 function FeedCard({ item, ownWord, onEcho }: { item: FeedWord; ownWord: string; onEcho: () => void }) {
-  const name = item.username;
+  const name = usernameLabel(item.username);
   const match = item.word.toLocaleUpperCase() === ownWord.toLocaleUpperCase();
   const content = <><div className="live-person"><span><strong>{name}</strong><small>{item.city || 'Location not added'} · {timeAgo(item.created_at)}</small></span></div><strong className="live-word" style={{ color: wordColorValues[item.color] }}>{item.word}{item.emoji && <span> {item.emoji}</span>}</strong></>;
   if (match) return <article className="live-card friend-square exact-match" aria-label={`${name} chose the same word as you`}><div className="card-static-content">{content}</div><EchoStat count={item.echo_count} /></article>;
@@ -269,7 +273,7 @@ function TodayTab({ submitted, level, feed, feedLoading, spokeCount, feedMode, s
 }
 
 function FriendCard({ friend, match, echoed, onEcho }: { friend: typeof friends[number]; match: boolean; echoed: boolean; onEcho: () => void }) {
-  const content = <><div className="live-person"><span><strong>{friend.handle.slice(1)}</strong><small>{friendCities[friend.id]} · {friend.time} ago</small></span></div><strong className="live-word">{friend.word}</strong></>;
+  const content = <><div className="live-person"><span><strong>{usernameLabel(friend.handle)}</strong><small>{friendCities[friend.id]} · {friend.time} ago</small></span></div><strong className="live-word">{friend.word}</strong></>;
   if (match) return <article className="live-card friend-square exact-match" aria-label={`${friend.name} chose the same word as you`}><div className="card-static-content">{content}</div><EchoStat count={friend.echoes} /></article>;
   return <article className={`live-card friend-square ${echoed ? 'echoed' : ''}`}><button className="card-echo-action" aria-pressed={echoed} aria-label={`${friend.name} chose ${friend.word}. Tap to echo.`} onClick={onEcho}>{content}</button><EchoStat count={friend.echoes + (echoed ? 1 : 0)} /></article>;
 }
@@ -374,15 +378,15 @@ function YouToolsDialog(props: YouToolsDialogProps) {
           <form className="friend-search" onSubmit={event => { event.preventDefault(); void props.searchPeople(); }}><Input aria-label="Search username" value={props.searchQuery} onChange={event => props.onSearchQueryChange(event.target.value)} maxLength={24} placeholder="Start typing a username" autoComplete="off" /><Button type="submit" disabled={props.busy}><Search /> Search</Button></form>
           <div className="people-list">{props.searchResults.map(person => {
             const relationship = relationFor(person.id);
-            return <div className="person-row" key={person.id}><div><strong>{person.username}</strong><small><MapPin />{person.city || 'Location not added'}</small></div>{relationship?.status === 'accepted' ? <span className="status-chip"><Check /> Friends</span> : relationship?.status === 'pending' ? <span className="status-chip">Requested</span> : <Button size="sm" onClick={() => void props.sendFriendRequest(person.id)} disabled={props.busy}><UserPlus /> Connect</Button>}</div>;
+            return <div className="person-row" key={person.id}><div><strong>{usernameLabel(person.username)}</strong><small><MapPin />{person.city || 'Location not added'}</small></div>{relationship?.status === 'accepted' ? <span className="status-chip"><Check /> Friends</span> : relationship?.status === 'pending' ? <span className="status-chip">Requested</span> : <Button size="sm" onClick={() => void props.sendFriendRequest(person.id)} disabled={props.busy}><UserPlus /> Connect</Button>}</div>;
           })}{props.searchQuery && !props.busy && props.searchResults.length === 0 && <p className="panel-empty">No matching usernames yet.</p>}</div>
         </>}
         {props.panel === 'friends' && <>
           <DialogHeader><DialogTitle>Friends</DialogTitle><DialogDescription>New friendships give each person 10 XP.</DialogDescription></DialogHeader>
           <div className="people-list friendship-list">
-            {incoming.map(item => <div className="person-row" key={item.id}><div><strong>{item.other.username}</strong><small>Wants to be friends</small></div><Button size="sm" onClick={() => void props.acceptFriend(item.id)} disabled={props.busy}><Check /> Accept</Button></div>)}
-            {outgoing.map(item => <div className="person-row" key={item.id}><div><strong>{item.other.username}</strong><small>Request sent</small></div><span className="status-chip">Pending</span></div>)}
-            {accepted.map(item => <div className="person-row" key={item.id}><div><strong>{item.other.username}</strong><small><MapPin />{item.other.city || 'Location not added'}</small></div><span className="status-chip"><Check /> Friends</span></div>)}
+            {incoming.map(item => <div className="person-row" key={item.id}><div><strong>{usernameLabel(item.other.username)}</strong><small>Wants to be friends</small></div><Button size="sm" onClick={() => void props.acceptFriend(item.id)} disabled={props.busy}><Check /> Accept</Button></div>)}
+            {outgoing.map(item => <div className="person-row" key={item.id}><div><strong>{usernameLabel(item.other.username)}</strong><small>Request sent</small></div><span className="status-chip">Pending</span></div>)}
+            {accepted.map(item => <div className="person-row" key={item.id}><div><strong>{usernameLabel(item.other.username)}</strong><small><MapPin />{item.other.city || 'Location not added'}</small></div><span className="status-chip"><Check /> Friends</span></div>)}
             {props.connections.length === 0 && <p className="panel-empty">No friends or requests yet. Search for someone to get started.</p>}
           </div>
         </>}
