@@ -25,6 +25,7 @@ export type WordColor = 'mint' | 'blue' | 'coral';
 
 export type WurdProfile = {
   id: string;
+  created_at: string;
   username: string;
   display_name: string | null;
   avatar_url: string | null;

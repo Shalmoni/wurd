@@ -111,6 +111,11 @@ function todayDateTimeLabel() {
   return new Intl.DateTimeFormat('en', { month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date());
 }
 
+function memberSinceLabel(value?: string | null) {
+  if (!value) return 'since today';
+  return `since ${new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(value))}`;
+}
+
 function multiplierForStreak(streak: number) {
   if (streak >= 60) return 1.5;
   if (streak >= 30) return 1.4;
@@ -133,12 +138,19 @@ function readableError(reason: unknown, fallback: string) {
   return fallback;
 }
 
-function BrandHeader({ submitted, emoji, color, echoes, xp, level, streak }: { submitted: string; emoji: string | null; color: WordColor; echoes: number; xp: number; level: number; streak: number }) {
+function BrandHeader({ tab, submitted, emoji, color, echoes, xp, level, streak, username, memberSince }: { tab: Tab; submitted: string; emoji: string | null; color: WordColor; echoes: number; xp: number; level: number; streak: number; username?: string; memberSince?: string | null }) {
   const levelProgress = levelProgressFor(xp, level);
   const multiplier = multiplierForStreak(streak);
+  const topRow = <div className="today-brand-row"><div className="today-brand">wurd</div><div className="header-xp"><span className="xp-label">XP</span><strong>{xp}</strong><em>{multiplier.toFixed(1)}×</em><i className="xp-bar"><b style={{ width: `${levelProgress}%` }} /></i><span className="xp-streak"><Flame />{streak}</span></div></div>;
+  if (tab === 'you') return (
+    <header className="today-app-header you-identity-header">
+      {topRow}
+      <div className="you-identity"><strong>@{username || 'username'}</strong><span>{memberSinceLabel(memberSince)}</span></div>
+    </header>
+  );
   if (submitted) return (
     <header className="today-app-header">
-      <div className="today-brand-row"><div className="today-brand">wurd</div><div className="header-xp"><span className="xp-label">XP</span><strong>{xp}</strong><em>{multiplier.toFixed(1)}×</em><i className="xp-bar"><b style={{ width: `${levelProgress}%` }} /></i><span className="xp-streak"><Flame />{streak}</span></div></div>
+      {topRow}
       <strong className="today-word" style={{ color: wordColorValues[color] }}>{submitted}{emoji && <span className="today-emoji"> {emoji}</span>}</strong>
       <div className="today-meta-row"><p>{todayLabel()}</p><span><Waves />{echoes}</span></div>
     </header>
@@ -637,7 +649,7 @@ export default function CozyPreview() {
   const streak = profile?.streak_days ?? 12;
   const ownEchoes = history.find(item => item.local_date === dayKey)?.echo_count ?? (submitted ? 37 + submitted.length * 11 : 0);
   return (
-    <main className={`cozy-stage fixed-app active-${tab} ${submitted ? 'today-app' : ''}`}><section className="cozy-shell"><BrandHeader submitted={submitted} emoji={submittedEmoji} color={submittedColor} echoes={ownEchoes} xp={xp} level={level} streak={streak} /><div className="cozy-main">
+    <main className={`cozy-stage fixed-app active-${tab} ${submitted || tab === 'you' ? 'today-app' : ''}`}><section className="cozy-shell"><BrandHeader tab={tab} submitted={submitted} emoji={submittedEmoji} color={submittedColor} echoes={ownEchoes} xp={xp} level={level} streak={streak} username={profile?.username} memberSince={profile?.created_at} /><div className="cozy-main">
       {appError && <button className="app-error" onClick={() => setAppError('')}>{appError}</button>}
       {tab === 'today' && <TodayTab submitted={submitted} level={level} feed={feed} feedLoading={feedLoading} spokeCount={spokeCount} feedMode={feedMode} setFeedMode={setFeedMode} setSubmitted={postWord} echoed={echoed} toggleEcho={toggleEcho} />}
       {tab === 'world' && <WorldTab />}
