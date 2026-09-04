@@ -860,6 +860,7 @@ html, body, #root { height: 100%; overflow: hidden; overscroll-behavior: none; }
   flex: 0 0 clamp(70px, 10svh, 86px);
   display: grid;
   grid-template-columns: repeat(3, 1fr);
+  align-items: stretch;
   margin: 0 -12px;
   background: #00e695;
   color: #053c2a;
@@ -871,6 +872,10 @@ html, body, #root { height: 100%; overflow: hidden; overscroll-behavior: none; }
   align-items: center;
   justify-content: center;
   gap: 5px;
+  min-width: 0;
+  height: 100%;
+  box-sizing: border-box;
+  padding: clamp(4px, .8svh, 8px) 0 0;
   border: 0;
   background: transparent;
   color: inherit;
@@ -878,6 +883,7 @@ html, body, #root { height: 100%; overflow: hidden; overscroll-behavior: none; }
   font-weight: 850;
   letter-spacing: .03em;
 }
+.you-actions button span { line-height: 1; }
 .you-actions button + button::before { content: ''; position: absolute; left: 0; top: 20%; bottom: 20%; width: 1px; background: rgba(4,73,49,.18); }
 .you-actions button:hover, .you-actions button:focus-visible { background: rgba(255,255,255,.22); }
 .you-actions svg { width: 22px; height: 22px; stroke-width: 2; }
@@ -974,6 +980,7 @@ html, body, #root { height: 100%; overflow: hidden; overscroll-behavior: none; }
 
 @media (max-height: 700px) {
   .fixed-app.active-you .you-actions { flex-basis: 58px; }
+  .you-actions button { padding-top: 4px; }
   .you-actions svg { width: 19px; height: 19px; }
   .diary-empty { padding: 14px; }
   .diary-empty h2 { margin-top: 10px; font-size: 21px; }
