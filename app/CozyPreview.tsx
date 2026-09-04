@@ -573,9 +573,16 @@ export default function CozyPreview() {
   }, []);
 
   useEffect(() => {
-    if (!user || !submitted) return;
-    void loadFeed(feedMode, user).catch(reason => setAppError(readableError(reason, 'Could not load today’s words.')));
-  }, [user, submitted, feedMode]);
+    if (!user || !submitted || tab !== 'today') return;
+    const refreshFeed = () => {
+      if (document.visibilityState === 'visible') {
+        void loadFeed(feedMode, user).catch(reason => setAppError(readableError(reason, 'Could not load today’s words.')));
+      }
+    };
+    refreshFeed();
+    const timer = window.setInterval(refreshFeed, 20000);
+    return () => window.clearInterval(timer);
+  }, [user, submitted, feedMode, tab]);
 
   useEffect(() => {
     if (isSupabaseConfigured) return;
