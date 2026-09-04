@@ -19,7 +19,7 @@ import { isSupabaseConfigured, supabase, type FeedWord, type WordColor, type Wur
 type Tab = 'today' | 'world' | 'you';
 type Scope = 'World' | 'Israel' | 'Nearby';
 type PostWordInput = { word: string; emoji: string | null; color: WordColor };
-type DiaryWord = { id: number; local_date: string; word: string; emoji: string | null; color: WordColor; echo_count: number };
+type DiaryWord = { id: number; local_date: string; word: string; emoji: string | null; color: WordColor; created_at: string; echo_count: number };
 type ProfileSummary = Pick<WurdProfile, 'id' | 'username' | 'city'>;
 type Friendship = {
   id: number;
@@ -116,6 +116,20 @@ function memberSinceLabel(value?: string | null) {
   return new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(value));
 }
 
+function postedAgoLabel(value?: string | null, now = Date.now()) {
+  if (!value) return '';
+  const minutes = Math.max(0, Math.floor((now - new Date(value).getTime()) / 60000));
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return `${minutes} ${minutes === 1 ? 'minute' : 'minutes'} ago`;
+  const hours = Math.floor(minutes / 60);
+  return `${hours} ${hours === 1 ? 'hour' : 'hours'} ago`;
+}
+
+function isWithinTodayWindow(value: string, now = Date.now()) {
+  const postedAt = new Date(value).getTime();
+  return Number.isFinite(postedAt) && postedAt <= now && postedAt > now - 24 * 60 * 60 * 1000;
+}
+
 function multiplierForStreak(streak: number) {
   if (streak >= 60) return 1.5;
   if (streak >= 30) return 1.4;
@@ -138,14 +152,14 @@ function readableError(reason: unknown, fallback: string) {
   return fallback;
 }
 
-function BrandHeader({ tab, submitted, emoji, color, echoes, xp, level, streak, username, memberSince }: { tab: Tab; submitted: string; emoji: string | null; color: WordColor; echoes: number; xp: number; level: number; streak: number; username?: string; memberSince?: string | null }) {
+function BrandHeader({ tab, submitted, submittedAt, now, emoji, color, echoes, xp, level, streak, username, memberSince }: { tab: Tab; submitted: string; submittedAt?: string | null; now: number; emoji: string | null; color: WordColor; echoes: number; xp: number; level: number; streak: number; username?: string; memberSince?: string | null }) {
   const levelProgress = levelProgressFor(xp, level);
   const multiplier = multiplierForStreak(streak);
   const topRow = <div className="today-brand-row"><div className="today-brand">wurd</div><div className="header-xp"><strong className="xp-total"><span className="xp-prefix">XP</span>{xp}</strong><em>{multiplier.toFixed(1)}×</em><i className="xp-bar"><b style={{ width: `${levelProgress}%` }} /></i><span className="xp-streak"><Flame />{streak}</span></div></div>;
   if (tab === 'you') return (
     <header className="today-app-header you-identity-header">
       {topRow}
-      <div className="you-identity"><strong>@{username || 'username'}</strong><span><i>since</i><b>{memberSinceLabel(memberSince)}</b></span></div>
+      <div className="you-identity"><strong>@{username || 'username'}</strong><span><i>since</i><b>{memberSinceLabel(memberSince)}</b>{submittedAt && <em>· {postedAgoLabel(submittedAt, now)}</em>}</span></div>
     </header>
   );
   if (submitted) return (
@@ -398,6 +412,7 @@ export default function CozyPreview() {
   const [tab, setTab] = useState<Tab>('today');
   const [dayKey, setDayKey] = useState(localDayKey);
   const [submitted, setSubmittedState] = useState('');
+  const [submittedAt, setSubmittedAt] = useState<string | null>(null);
   const [submittedEmoji, setSubmittedEmoji] = useState<string | null>(null);
   const [submittedColor, setSubmittedColor] = useState<WordColor>('mint');
   const [echoed, setEchoed] = useState<string[]>([]);
@@ -418,6 +433,7 @@ export default function CozyPreview() {
   const [cityDraft, setCityDraft] = useState('');
   const [citySelection, setCitySelection] = useState<CityChoice | null>(null);
   const [accountBusy, setAccountBusy] = useState(false);
+  const [clockNow, setClockNow] = useState(Date.now);
   const friendSearchTimer = useRef<number | null>(null);
 
   async function loadAccount(activeUser: User) {
@@ -426,7 +442,7 @@ export default function CozyPreview() {
     try {
       const [profileResult, wordResult, historyResult] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', activeUser.id).single(),
-        supabase.from('daily_words').select('id, local_date, word, emoji, color').eq('user_id', activeUser.id).eq('local_date', localDayKey()).maybeSingle(),
+        supabase.from('daily_words').select('id, local_date, word, emoji, color, created_at').eq('user_id', activeUser.id).eq('local_date', localDayKey()).maybeSingle(),
         supabase.rpc('my_word_history', { p_limit: 14 }),
       ]);
       if (profileResult.error) throw profileResult.error;
@@ -442,10 +458,12 @@ export default function CozyPreview() {
         setSubmittedState(wordResult.data.word);
         setSubmittedEmoji(wordResult.data.emoji);
         setSubmittedColor(wordResult.data.color as WordColor);
+        setSubmittedAt(wordResult.data.created_at);
       } else {
         setSubmittedState('');
         setSubmittedEmoji(null);
         setSubmittedColor('mint');
+        setSubmittedAt(null);
       }
     } finally {
       setFeedLoading(false);
@@ -460,7 +478,7 @@ export default function CozyPreview() {
     if (result.error) throw result.error;
     const rows = (result.data || []) as FeedWord[];
     setSpokeCount(rows[0]?.spoke_count || 0);
-    setFeed(rows.filter(item => item.user_id !== activeUser.id).slice(0, 8));
+    setFeed(rows.filter(item => item.user_id !== activeUser.id && isWithinTodayWindow(item.created_at)).slice(0, 8));
   }
 
   async function loadConnections(activeUser = user) {
@@ -500,9 +518,14 @@ export default function CozyPreview() {
         void loadAccount(session.user).catch(reason => setAppError(readableError(reason, 'Could not load your account.')));
         void loadConnections(session.user).catch(reason => console.error('Could not load friendships', reason));
       }
-      else { setProfile(null); setSubmittedState(''); setFeed([]); setHistory([]); setConnections([]); }
+      else { setProfile(null); setSubmittedState(''); setSubmittedAt(null); setFeed([]); setHistory([]); setConnections([]); }
     });
     return () => { live = false; listener.subscription.unsubscribe(); };
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setClockNow(Date.now()), 30000);
+    return () => window.clearInterval(timer);
   }, []);
 
   useEffect(() => {
@@ -516,12 +539,13 @@ export default function CozyPreview() {
     const savedPost = window.localStorage.getItem(`wurd:post:${dayKey}`);
     const savedEchoes = window.localStorage.getItem(`wurd:echoes:${dayKey}`);
     setSubmittedState(word);
+    setSubmittedAt(window.localStorage.getItem(`wurd:posted-at:${dayKey}`));
     if (savedPost) { try { const post = JSON.parse(savedPost) as PostWordInput; setSubmittedEmoji(post.emoji); setSubmittedColor(post.color); } catch { /* supports older local saves */ } }
     try { setEchoed(savedEchoes ? JSON.parse(savedEchoes) : []); } catch { setEchoed([]); }
     if (!word) setTab('today');
     const timer = window.setInterval(() => {
       const nextDay = localDayKey();
-      if (nextDay !== dayKey) { setDayKey(nextDay); setSubmittedState(''); setEchoed([]); setTab('today'); }
+      if (nextDay !== dayKey) { setDayKey(nextDay); setSubmittedState(''); setSubmittedAt(null); setEchoed([]); setTab('today'); }
     }, 30000);
     return () => window.clearInterval(timer);
   }, [dayKey]);
@@ -531,16 +555,20 @@ export default function CozyPreview() {
       const result = await supabase.rpc('post_daily_word', { p_word: post.word, p_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, p_emoji: post.emoji, p_color: post.color, p_city: profile?.city || null, p_country_code: profile?.country_code || null });
       if (result.error) throw result.error;
       setSubmittedState(post.word);
+      setSubmittedAt(new Date().toISOString());
       setSubmittedEmoji(post.emoji);
       setSubmittedColor(post.color);
       await loadAccount(user);
       return;
     }
     setSubmittedState(post.word);
+    const postedAt = new Date().toISOString();
+    setSubmittedAt(postedAt);
     setSubmittedEmoji(post.emoji);
     setSubmittedColor(post.color);
     window.localStorage.setItem(`wurd:daily:${dayKey}`, post.word);
     window.localStorage.setItem(`wurd:post:${dayKey}`, JSON.stringify(post));
+    window.localStorage.setItem(`wurd:posted-at:${dayKey}`, postedAt);
   }
   async function toggleEcho(id: number | string, isEchoed = false) {
     if (supabase && user && typeof id === 'number') {
@@ -649,9 +677,9 @@ export default function CozyPreview() {
   const streak = profile?.streak_days ?? 12;
   const ownEchoes = history.find(item => item.local_date === dayKey)?.echo_count ?? (submitted ? 37 + submitted.length * 11 : 0);
   return (
-    <main className={`cozy-stage fixed-app active-${tab} ${submitted || tab === 'you' ? 'today-app' : ''}`}><section className="cozy-shell"><BrandHeader tab={tab} submitted={submitted} emoji={submittedEmoji} color={submittedColor} echoes={ownEchoes} xp={xp} level={level} streak={streak} username={profile?.username} memberSince={profile?.created_at} /><div className="cozy-main">
+    <main className={`cozy-stage fixed-app active-${tab} ${submitted || tab === 'you' ? 'today-app' : ''}`}><section className="cozy-shell"><BrandHeader tab={tab} submitted={submitted} submittedAt={submittedAt} now={clockNow} emoji={submittedEmoji} color={submittedColor} echoes={ownEchoes} xp={xp} level={level} streak={streak} username={profile?.username} memberSince={profile?.created_at} /><div className="cozy-main">
       {appError && <button className="app-error" onClick={() => setAppError('')}>{appError}</button>}
-      {tab === 'today' && <TodayTab submitted={submitted} level={level} feed={feed} feedLoading={feedLoading} spokeCount={spokeCount} feedMode={feedMode} setFeedMode={setFeedMode} setSubmitted={postWord} echoed={echoed} toggleEcho={toggleEcho} />}
+      {tab === 'today' && <TodayTab submitted={submitted} level={level} feed={feed.filter(item => isWithinTodayWindow(item.created_at, clockNow))} feedLoading={feedLoading} spokeCount={spokeCount} feedMode={feedMode} setFeedMode={setFeedMode} setSubmitted={postWord} echoed={echoed} toggleEcho={toggleEcho} />}
       {tab === 'world' && <WorldTab />}
       {tab === 'you' && <YouTab history={history} onOpenPanel={panel => { setAppError(''); setSearchResults([]); setYouPanel(panel); if (panel === 'friends') void loadConnections(user || undefined).catch(reason => setAppError(readableError(reason, 'Could not load friends.'))); }} />}
     </div><nav className="cozy-nav" aria-label="App navigation">{tabs.map(item => {
