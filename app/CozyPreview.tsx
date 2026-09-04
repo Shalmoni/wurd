@@ -112,8 +112,8 @@ function todayDateTimeLabel() {
 }
 
 function memberSinceLabel(value?: string | null) {
-  if (!value) return 'since today';
-  return `since ${new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(value))}`;
+  if (!value) return 'today';
+  return new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(value));
 }
 
 function multiplierForStreak(streak: number) {
@@ -145,7 +145,7 @@ function BrandHeader({ tab, submitted, emoji, color, echoes, xp, level, streak, 
   if (tab === 'you') return (
     <header className="today-app-header you-identity-header">
       {topRow}
-      <div className="you-identity"><strong>@{username || 'username'}</strong><span>{memberSinceLabel(memberSince)}</span></div>
+      <div className="you-identity"><strong>@{username || 'username'}</strong><span><i>since</i><b>{memberSinceLabel(memberSince)}</b></span></div>
     </header>
   );
   if (submitted) return (

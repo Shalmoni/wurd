@@ -1071,10 +1071,21 @@ html, body, #root { height: 100%; overflow: hidden; overscroll-behavior: none; }
   overflow-wrap: anywhere;
 }
 .you-identity span {
-  color: #53675f;
-  font-size: clamp(8px, 2.2vw, 11px);
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
   font-weight: 600;
   white-space: nowrap;
+}
+.you-identity span i {
+  color: #00a86d;
+  font-size: clamp(8px, 2.2vw, 11px);
+  font-style: normal;
+}
+.you-identity span b {
+  color: #53675f;
+  font-size: clamp(10px, 2.6vw, 13px);
+  font-weight: 650;
 }
 
 .diary-day-card > span { font-size: 13px; }
