@@ -197,13 +197,21 @@ function EchoStat({ count }: { count: number }) {
   );
 }
 
+function wordLengthClass(word: string) {
+  const length = Array.from(word).length;
+  if (length >= 17) return 'word-fit-xlong';
+  if (length >= 13) return 'word-fit-long';
+  if (length >= 9) return 'word-fit-medium';
+  return 'word-fit-short';
+}
+
 function LiveCard({ person, echoed, onEcho }: { person: typeof livePeople[number]; echoed: boolean; onEcho: () => void }) {
   const [name, , word, city, time, , count] = person;
   return (
     <article className={`live-card ${echoed ? 'echoed' : ''}`}>
       <button className="card-echo-action" aria-pressed={echoed} aria-label={`${name} chose ${word}. Tap to echo.`} onClick={onEcho}>
         <div className="live-person"><span><strong>{name.toLowerCase()}</strong><small>{city} · {time}</small></span></div>
-        <strong className="live-word">{word}</strong>
+        <strong className={`live-word ${wordLengthClass(word)}`}>{word}</strong>
       </button>
       <EchoStat count={count + (echoed ? 1 : 0)} />
     </article>
@@ -220,7 +228,7 @@ function timeAgo(value: string, now = Date.now()) {
 function FeedCard({ item, ownWord, onEcho }: { item: FeedWord; ownWord: string; onEcho: () => void }) {
   const name = usernameLabel(item.username);
   const match = item.word.toLocaleUpperCase() === ownWord.toLocaleUpperCase();
-  const content = <><div className="live-person"><span><strong>{name}</strong><small>{item.city || 'Location not added'} · {timeAgo(item.created_at)}</small></span></div><strong className={`live-word word-style-${item.word_style || 'bold'}`} style={{ color: wordColorValues[item.color] }}>{item.word}{item.emoji && <span> {item.emoji}</span>}</strong></>;
+  const content = <><div className="live-person"><span><strong>{name}</strong><small>{item.city || 'Location not added'} · {timeAgo(item.created_at)}</small></span></div><strong className={`live-word ${wordLengthClass(item.word)} word-style-${item.word_style || 'bold'}`} style={{ color: wordColorValues[item.color] }}>{item.word}{item.emoji && <span> {item.emoji}</span>}</strong></>;
   if (match) return <article className="live-card friend-square exact-match" aria-label={`${name} chose the same word as you`}><div className="card-static-content">{content}</div><EchoStat count={item.echo_count} /></article>;
   return <article className={`live-card friend-square ${item.echoed_by_me ? 'echoed' : ''}`}><button className="card-echo-action" aria-pressed={item.echoed_by_me} aria-label={`${name} chose ${item.word}. Tap to echo.`} onClick={onEcho}>{content}</button><EchoStat count={item.echo_count} /></article>;
 }
@@ -276,7 +284,7 @@ function TodayTab({ submitted, level, feed, feedLoading, spokeCount, feedMode, s
 }
 
 function FriendCard({ friend, match, echoed, onEcho }: { friend: typeof friends[number]; match: boolean; echoed: boolean; onEcho: () => void }) {
-  const content = <><div className="live-person"><span><strong>{usernameLabel(friend.handle)}</strong><small>{friendCities[friend.id]} · {friend.time} ago</small></span></div><strong className="live-word">{friend.word}</strong></>;
+  const content = <><div className="live-person"><span><strong>{usernameLabel(friend.handle)}</strong><small>{friendCities[friend.id]} · {friend.time} ago</small></span></div><strong className={`live-word ${wordLengthClass(friend.word)}`}>{friend.word}</strong></>;
   if (match) return <article className="live-card friend-square exact-match" aria-label={`${friend.name} chose the same word as you`}><div className="card-static-content">{content}</div><EchoStat count={friend.echoes} /></article>;
   return <article className={`live-card friend-square ${echoed ? 'echoed' : ''}`}><button className="card-echo-action" aria-pressed={echoed} aria-label={`${friend.name} chose ${friend.word}. Tap to echo.`} onClick={onEcho}>{content}</button><EchoStat count={friend.echoes + (echoed ? 1 : 0)} /></article>;
 }
