@@ -318,6 +318,8 @@ button { cursor: pointer; }
 .today-toolbar .today-mode { width: 132px; min-height: 36px; height: 36px; margin: 0; padding: 2px; }
 .today-toolbar .today-mode button { font-size: 9px; font-weight: 750; }
 .today-app .live-grid, .today-app .friends-card-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(4, minmax(0, 1fr)); gap: clamp(6px, 1.1svh, 11px); padding-bottom: 0; }
+.today-app .friends-card-grid { grid-template-rows: none; grid-auto-rows: clamp(92px, 13svh, 124px); overflow-x: hidden; overflow-y: auto; padding-right: 2px; padding-bottom: 8px; scroll-snap-type: y proximity; overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; }
+.today-app .friends-card-grid .live-card { scroll-snap-align: start; }
 .today-app .live-card, .today-app .friend-square { position: relative; min-height: 0; height: auto; padding: clamp(9px, 1.25svh, 13px); border-radius: 17px; }
 .today-app .live-person { justify-content: space-between; }
 .today-app .live-person [data-slot='avatar'] { order: 2; width: clamp(25px, 3.8svh, 34px); height: clamp(25px, 3.8svh, 34px); }

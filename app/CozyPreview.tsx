@@ -513,12 +513,13 @@ export default function CozyPreview() {
   async function loadFeed(mode = feedMode, activeUser = user) {
     if (!supabase || !activeUser) return;
     setFeedLoading(true);
-    const result = await supabase.rpc('feed_words', { p_date: localDayKey(), p_limit: 9, p_friends_only: mode === 'Friends' });
+    const result = await supabase.rpc('feed_words', { p_date: localDayKey(), p_limit: mode === 'Friends' ? 500 : 9, p_friends_only: mode === 'Friends' });
     setFeedLoading(false);
     if (result.error) throw result.error;
     const rows = (result.data || []) as FeedWord[];
     setSpokeCount(rows[0]?.spoke_count || 0);
-    setFeed(rows.filter(item => item.user_id !== activeUser.id && isWithinTodayWindow(item.created_at)).slice(0, 8));
+    const visibleRows = rows.filter(item => item.user_id !== activeUser.id && isWithinTodayWindow(item.created_at));
+    setFeed(mode === 'Friends' ? visibleRows : visibleRows.slice(0, 8));
   }
 
   async function loadConnections(activeUser = user) {
