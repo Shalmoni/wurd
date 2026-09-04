@@ -990,6 +990,13 @@ html, body, #root { height: 100%; overflow: hidden; overscroll-behavior: none; }
    the score, multiplier and streak can carry the visual weight. */
 .header-xp > .xp-label { font-size: 10px; }
 .header-xp > strong { font-size: 14px; }
+.header-xp > .xp-total {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
 .header-xp > em { font-size: 11px; }
 .header-xp > .xp-bar {
   min-width: 24px;
