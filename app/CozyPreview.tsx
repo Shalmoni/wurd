@@ -14,6 +14,7 @@ import type { FeatureCollection } from 'geojson';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { isSupabaseConfigured, supabase, type FeedWord, type WordColor, type WurdProfile } from '@/lib/supabase';
 
 type Tab = 'today' | 'world' | 'you';
@@ -143,6 +144,11 @@ function readableError(reason: unknown, fallback: string) {
   return fallback;
 }
 
+function isInvalidLocalSession(reason: unknown) {
+  const message = readableError(reason, '');
+  return /(?:jwt.*future|issued.*future|clock.*skew|user from sub claim in jwt does not exist)/i.test(message);
+}
+
 function locationLabel(city?: string | null, countryCode?: string | null) {
   if (!city) return 'Location not added';
   const displayCity = city.normalize('NFD').replace(/\u0331/g, '').normalize('NFC');
@@ -169,20 +175,33 @@ function BrandHeader({ tab, submitted, submittedAt, now, emoji, color, echoes, x
     <header className="today-app-header">
       {topRow}
       <strong className="today-word" style={{ color: wordColorValues[color] }}>{submitted}{emoji && <span className="today-emoji"> {emoji}</span>}</strong>
-      <div className="today-meta-row"><p>{submittedAt ? timeAgo(submittedAt, now) : 'now'} · {locationLabel(city, countryCode)}</p><span><Waves />{echoes}</span></div>
+      <div className="today-meta-row"><p>{submittedAt ? timeAgo(submittedAt, now) : 'now'} · {locationLabel(city, countryCode)}</p><EchoStat count={echoes} /></div>
     </header>
   );
   return <header className="cozy-header"><div className="cozy-logo">wurd</div></header>;
 }
 
+function EchoStat({ count }: { count: number }) {
+  return (
+    <Popover>
+      <PopoverTrigger className="echo-count" aria-label={`${count} echoes. Echoes show how many people feel the same way.`} onClick={event => event.stopPropagation()}>
+        <Waves />{count}
+      </PopoverTrigger>
+      <PopoverContent side="top" sideOffset={7} className="echo-tooltip">Echoes show how many people feel the same way.</PopoverContent>
+    </Popover>
+  );
+}
+
 function LiveCard({ person, echoed, onEcho }: { person: typeof livePeople[number]; echoed: boolean; onEcho: () => void }) {
   const [name, , word, city, time, , count] = person;
   return (
-    <button className={`live-card ${echoed ? 'echoed' : ''}`} aria-pressed={echoed} aria-label={`${name} chose ${word}. Tap to echo.`} onClick={onEcho}>
-      <div className="live-person"><span><strong>{name.toLowerCase()}</strong><small>{city} · {time}</small></span></div>
-      <strong className="live-word">{word}</strong>
-      <span className="echo-count"><Waves />{count + (echoed ? 1 : 0)}</span>
-    </button>
+    <article className={`live-card ${echoed ? 'echoed' : ''}`}>
+      <button className="card-echo-action" aria-pressed={echoed} aria-label={`${name} chose ${word}. Tap to echo.`} onClick={onEcho}>
+        <div className="live-person"><span><strong>{name.toLowerCase()}</strong><small>{city} · {time}</small></span></div>
+        <strong className="live-word">{word}</strong>
+      </button>
+      <EchoStat count={count + (echoed ? 1 : 0)} />
+    </article>
   );
 }
 
@@ -196,9 +215,9 @@ function timeAgo(value: string, now = Date.now()) {
 function FeedCard({ item, ownWord, onEcho }: { item: FeedWord; ownWord: string; onEcho: () => void }) {
   const name = item.username;
   const match = item.word.toLocaleUpperCase() === ownWord.toLocaleUpperCase();
-  const content = <><div className="live-person"><span><strong>{name}</strong><small>{item.city || 'Location not added'} · {timeAgo(item.created_at)}</small></span></div><strong className="live-word" style={{ color: wordColorValues[item.color] }}>{item.word}{item.emoji && <span> {item.emoji}</span>}</strong><span className="echo-count"><Waves />{item.echo_count}</span></>;
-  if (match) return <article className="live-card friend-square exact-match" aria-label={`${name} chose the same word as you`}>{content}</article>;
-  return <button className={`live-card friend-square ${item.echoed_by_me ? 'echoed' : ''}`} aria-pressed={item.echoed_by_me} aria-label={`${name} chose ${item.word}. Tap to echo.`} onClick={onEcho}>{content}</button>;
+  const content = <><div className="live-person"><span><strong>{name}</strong><small>{item.city || 'Location not added'} · {timeAgo(item.created_at)}</small></span></div><strong className="live-word" style={{ color: wordColorValues[item.color] }}>{item.word}{item.emoji && <span> {item.emoji}</span>}</strong></>;
+  if (match) return <article className="live-card friend-square exact-match" aria-label={`${name} chose the same word as you`}><div className="card-static-content">{content}</div><EchoStat count={item.echo_count} /></article>;
+  return <article className={`live-card friend-square ${item.echoed_by_me ? 'echoed' : ''}`}><button className="card-echo-action" aria-pressed={item.echoed_by_me} aria-label={`${name} chose ${item.word}. Tap to echo.`} onClick={onEcho}>{content}</button><EchoStat count={item.echo_count} /></article>;
 }
 
 type TodayTabProps = {
@@ -243,16 +262,16 @@ function TodayTab({ submitted, level, feed, feedLoading, spokeCount, feedMode, s
   const topPeople = [...livePeople].sort((left, right) => right[6] - left[6]).slice(0, 8);
   return (
     <section className="tab-view live-view">
-      <div className="today-toolbar"><span><i />{isSupabaseConfigured ? `${spokeCount} spoke` : feedMode === 'Top today' ? '1,284 spoke' : '8 of 12 spoke'}</span><div className="today-mode cozy-segments"><button className={feedMode === 'Top today' ? 'active' : ''} onClick={() => setFeedMode('Top today')}>Top</button><button className={feedMode === 'Friends' ? 'active' : ''} onClick={() => setFeedMode('Friends')}>Friends</button></div></div>
+      <div className="today-toolbar"><div className="today-feed-summary"><span><i />{isSupabaseConfigured ? `${spokeCount} ${spokeCount === 1 ? 'wurd' : 'wurds'}` : feedMode === 'Top today' ? '1,284 wurds' : '8 of 12 friends'}</span><small>Tap someone&apos;s wurd to echo it.</small></div><div className="today-mode cozy-segments"><button className={feedMode === 'Top today' ? 'active' : ''} onClick={() => setFeedMode('Top today')}>Top</button><button className={feedMode === 'Friends' ? 'active' : ''} onClick={() => setFeedMode('Friends')}>Friends</button></div></div>
       {isSupabaseConfigured ? <div className={feedMode === 'Top today' ? 'live-grid' : 'friends-card-grid'}>{feedLoading ? <p className="feed-empty">Finding today&apos;s words…</p> : feed.length ? feed.map(item => <FeedCard key={item.id} item={item} ownWord={submitted} onEcho={() => toggleEcho(item.id, item.echoed_by_me)} />) : <p className="feed-empty">{feedMode === 'Friends' ? 'Your friends have not spoken yet.' : 'You are early. Today’s words will appear here.'}</p>}</div> : feedMode === 'Top today' ? <div className="live-grid">{topPeople.map((person, index) => <LiveCard key={`${person[0]}-${person[2]}`} person={person} echoed={echoed.includes(`live-${index}`)} onEcho={() => void toggleEcho(`live-${index}`)} />)}</div> : <div className="friends-card-grid">{friends.map(friend => <FriendCard key={friend.id} friend={friend} match={friend.word === submitted} echoed={echoed.includes(friend.id)} onEcho={() => void toggleEcho(friend.id)} />)}</div>}
     </section>
   );
 }
 
 function FriendCard({ friend, match, echoed, onEcho }: { friend: typeof friends[number]; match: boolean; echoed: boolean; onEcho: () => void }) {
-  const content = <><div className="live-person"><span><strong>{friend.handle.slice(1)}</strong><small>{friendCities[friend.id]} · {friend.time} ago</small></span></div><strong className="live-word">{friend.word}</strong><span className="echo-count"><Waves />{friend.echoes + (echoed ? 1 : 0)}</span></>;
-  if (match) return <article className="live-card friend-square exact-match" aria-label={`${friend.name} chose the same word as you`}>{content}</article>;
-  return <button className={`live-card friend-square ${echoed ? 'echoed' : ''}`} aria-pressed={echoed} aria-label={`${friend.name} chose ${friend.word}. Tap to echo.`} onClick={onEcho}>{content}</button>;
+  const content = <><div className="live-person"><span><strong>{friend.handle.slice(1)}</strong><small>{friendCities[friend.id]} · {friend.time} ago</small></span></div><strong className="live-word">{friend.word}</strong></>;
+  if (match) return <article className="live-card friend-square exact-match" aria-label={`${friend.name} chose the same word as you`}><div className="card-static-content">{content}</div><EchoStat count={friend.echoes} /></article>;
+  return <article className={`live-card friend-square ${echoed ? 'echoed' : ''}`}><button className="card-echo-action" aria-pressed={echoed} aria-label={`${friend.name} chose ${friend.word}. Tap to echo.`} onClick={onEcho}>{content}</button><EchoStat count={friend.echoes + (echoed ? 1 : 0)} /></article>;
 }
 
 function WorldMap({ scope }: { scope: Scope }) {
@@ -315,7 +334,7 @@ function YouTab({ history, onOpenPanel }: { history: DiaryWord[]; onOpenPanel: (
         <button onClick={() => onOpenPanel('settings')}><Settings /><span>Settings</span></button>
       </div>
       {diary.length > 0 && <div className="calendar-swipe-cue">SWIPE DAYS ↑</div>}
-      {diary.length > 0 ? <div className="day-ribbon" ref={dayTrack} aria-label="Your recent words">{diary.map(item => <article className={`diary-day-card ${item.isToday ? 'is-today' : ''}`} key={item.id}><span>{item.weekday}</span><div className="day-date"><i>{item.month}</i><strong>{item.day}</strong></div><b style={{ color: wordColorValues[item.color] }}>{item.word}{item.emoji && ` ${item.emoji}`}</b><small><Waves />{item.echoes}</small>{item.isToday && <em>TODAY</em>}</article>)}</div> : <div className="diary-empty"><span><Sun /></span><h2>Your words start here.</h2><p>Post your first word and it will become the first day in your story.</p></div>}
+      {diary.length > 0 ? <div className="day-ribbon" ref={dayTrack} aria-label="Your recent words">{diary.map(item => <article className={`diary-day-card ${item.isToday ? 'is-today' : ''}`} key={item.id}><span>{item.weekday}</span><div className="day-date"><i>{item.month}</i><strong>{item.day}</strong></div><b style={{ color: wordColorValues[item.color] }}>{item.word}{item.emoji && ` ${item.emoji}`}</b><EchoStat count={item.echoes} />{item.isToday && <em>TODAY</em>}</article>)}</div> : <div className="diary-empty"><span><Sun /></span><h2>Your words start here.</h2><p>Post your first word and it will become the first day in your story.</p></div>}
     </section>
   );
 }
@@ -505,9 +524,21 @@ export default function CozyPreview() {
     if (!supabase) return;
     const authClient = supabase;
     let live = true;
-    void authClient.auth.getUser().then(async ({ data, error }) => {
+    void authClient.auth.getUser().then(async initialResult => {
       if (!live) return;
-      if (error?.message.includes('User from sub claim in JWT does not exist')) {
+      let { data, error } = initialResult;
+      if (error && isInvalidLocalSession(error)) {
+        await new Promise(resolve => window.setTimeout(resolve, 1200));
+        const refreshed = await authClient.auth.refreshSession();
+        if (!refreshed.error && refreshed.data.user) {
+          data = { user: refreshed.data.user };
+          error = null;
+        }
+      }
+      if (error && isInvalidLocalSession(error)) {
+        // A restored Safari tab can retain an obsolete or slightly future-dated
+        // token. If one refresh cannot repair it, clear only this device's
+        // session and return to Google sign-in instead of exposing a JWT error.
         await authClient.auth.signOut({ scope: 'local' });
         if (live) { setUser(null); setAppError(''); setAuthLoading(false); }
         return;
@@ -679,7 +710,7 @@ export default function CozyPreview() {
 
   if (authLoading) return <main className="auth-stage"><div className="auth-card"><div className="cozy-logo">wurd</div><p>Getting today ready</p></div></main>;
   if (isSupabaseConfigured && !user) return <main className="auth-stage"><div className="auth-card sign-in-card"><div className="cozy-logo">wurd</div><h1>Say less.</h1><Button className="google-sign-in" onClick={signIn}><GoogleLogo /> Continue with Google</Button>{appError && <em>{appError}</em>}</div></main>;
-  if (profile && (profile.username.startsWith('wurd_') || !profile.city)) return <main className="auth-stage"><form className="auth-card onboarding-card" onSubmit={saveOnboarding}><div className="cozy-logo">wurd</div><h1>Make it yours.</h1><p>Choose a username and select your city. We show the city—not your street or precise location.</p><label htmlFor="onboarding-username">Username</label><Input id="onboarding-username" maxLength={24} value={usernameDraft} onChange={event => { setUsernameDraft(event.target.value); setAppError(''); }} placeholder="your_username" /><label htmlFor="onboarding-city">City</label><CityPicker id="onboarding-city" query={cityDraft} selected={citySelection} onQueryChange={value => { setCityDraft(value); setAppError(''); }} onSelect={setCitySelection} /><Button type="submit" disabled={accountBusy}>{accountBusy ? 'Saving…' : 'Start using wurd'}</Button>{appError && <em>{appError}</em>}</form></main>;
+  if (profile && (profile.username.startsWith('wurd_') || !profile.city)) return <main className="auth-stage"><form className="auth-card onboarding-card" onSubmit={saveOnboarding}><div className="cozy-logo">wurd</div><h1>Make it yours.</h1><p>Choose a username and select your city.</p><label htmlFor="onboarding-username">Username</label><Input id="onboarding-username" maxLength={24} value={usernameDraft} onChange={event => { setUsernameDraft(event.target.value); setAppError(''); }} placeholder="your_username" /><label htmlFor="onboarding-city">City</label><CityPicker id="onboarding-city" query={cityDraft} selected={citySelection} onQueryChange={value => { setCityDraft(value); setAppError(''); }} onSelect={setCitySelection} /><Button type="submit" disabled={accountBusy}>{accountBusy ? 'Saving…' : 'Start using wurd'}</Button>{appError && <em>{appError}</em>}</form></main>;
 
   const xp = profile?.xp ?? 852 + echoed.length;
   const level = profile?.level ?? 3;

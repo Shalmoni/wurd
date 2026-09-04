@@ -1,7 +1,7 @@
 {
   "name": "wurd",
   "short_name": "wurd",
-  "description": "One word a day. See what resonates.",
+  "description": "One word a day.",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#ffffff",
