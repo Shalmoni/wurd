@@ -292,7 +292,7 @@ type YouToolsDialogProps = {
   connections: Friendship[];
   searchResults: ProfileSummary[];
   searchQuery: string;
-  setSearchQuery: (value: string) => void;
+  onSearchQueryChange: (value: string) => void;
   searchPeople: () => Promise<void>;
   sendFriendRequest: (id: string) => Promise<void>;
   acceptFriend: (id: number) => Promise<void>;
@@ -317,7 +317,7 @@ function YouToolsDialog(props: YouToolsDialogProps) {
       <DialogContent className="you-tool-dialog">
         {props.panel === 'search' && <>
           <DialogHeader><DialogTitle>Find your people</DialogTitle><DialogDescription>Search by username, then send a friend request.</DialogDescription></DialogHeader>
-          <form className="friend-search" onSubmit={event => { event.preventDefault(); void props.searchPeople(); }}><Input aria-label="Search username" value={props.searchQuery} onChange={event => props.setSearchQuery(event.target.value)} maxLength={24} placeholder="Search username" /><Button type="submit" disabled={props.busy}><Search /> Search</Button></form>
+          <form className="friend-search" onSubmit={event => { event.preventDefault(); void props.searchPeople(); }}><Input aria-label="Search username" value={props.searchQuery} onChange={event => props.onSearchQueryChange(event.target.value)} maxLength={24} placeholder="Start typing a username" autoComplete="off" /><Button type="submit" disabled={props.busy}><Search /> Search</Button></form>
           <div className="people-list">{props.searchResults.map(person => {
             const relationship = relationFor(person.id);
             return <div className="person-row" key={person.id}><div><strong>{person.username}</strong><small><MapPin />{person.city || 'Location not added'}</small></div>{relationship?.status === 'accepted' ? <span className="status-chip"><Check /> Friends</span> : relationship?.status === 'pending' ? <span className="status-chip">Requested</span> : <Button size="sm" onClick={() => void props.sendFriendRequest(person.id)} disabled={props.busy}><UserPlus /> Connect</Button>}</div>;
@@ -400,6 +400,7 @@ export default function CozyPreview() {
   const [cityDraft, setCityDraft] = useState('');
   const [citySelection, setCitySelection] = useState<CityChoice | null>(null);
   const [accountBusy, setAccountBusy] = useState(false);
+  const friendSearchTimer = useRef<number | null>(null);
 
   async function loadAccount(activeUser: User) {
     if (!supabase) return;
@@ -550,15 +551,23 @@ export default function CozyPreview() {
     await loadAccount(user);
   }
 
-  async function searchPeople() {
+  async function searchPeople(query = searchQuery) {
     if (!supabase || !user) return;
-    const clean = searchQuery.trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
+    const clean = query.trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
     if (clean.length < 2) { setSearchResults([]); return; }
     setAccountBusy(true);
     const result = await supabase.from('profiles').select('id, username, city').ilike('username', `%${clean}%`).neq('id', user.id).limit(8);
     setAccountBusy(false);
     if (result.error) { setAppError(result.error.message); return; }
     setSearchResults((result.data || []) as ProfileSummary[]);
+  }
+
+  function updateFriendSearch(value: string) {
+    setSearchQuery(value);
+    if (friendSearchTimer.current !== null) window.clearTimeout(friendSearchTimer.current);
+    const clean = value.trim();
+    if (clean.length < 2) { setSearchResults([]); return; }
+    friendSearchTimer.current = window.setTimeout(() => void searchPeople(value), 300);
   }
 
   async function sendFriendRequest(addresseeId: string) {
@@ -620,6 +629,6 @@ export default function CozyPreview() {
     </div><nav className="cozy-nav" aria-label="App navigation">{tabs.map(item => {
       const locked = item.id === 'world';
       return <button key={item.id} className={`${tab === item.id ? 'active' : ''} ${locked ? 'locked' : ''}`} disabled={locked} title={locked ? 'Coming later' : item.label} onClick={() => setTab(item.id)}><item.icon />{locked && <Lock className="nav-lock" />}<span>{item.label}</span></button>;
-    })}</nav>{profile && user && <YouToolsDialog panel={youPanel} setPanel={setYouPanel} userId={user.id} connections={connections} searchResults={searchResults} searchQuery={searchQuery} setSearchQuery={setSearchQuery} searchPeople={searchPeople} sendFriendRequest={sendFriendRequest} acceptFriend={acceptFriend} saveSettings={saveSettings} signOut={signOut} usernameDraft={usernameDraft} setUsernameDraft={setUsernameDraft} cityDraft={cityDraft} setCityDraft={setCityDraft} citySelection={citySelection} setCitySelection={setCitySelection} busy={accountBusy} />}</section></main>
+    })}</nav>{profile && user && <YouToolsDialog panel={youPanel} setPanel={setYouPanel} userId={user.id} connections={connections} searchResults={searchResults} searchQuery={searchQuery} onSearchQueryChange={updateFriendSearch} searchPeople={searchPeople} sendFriendRequest={sendFriendRequest} acceptFriend={acceptFriend} saveSettings={saveSettings} signOut={signOut} usernameDraft={usernameDraft} setUsernameDraft={setUsernameDraft} cityDraft={cityDraft} setCityDraft={setCityDraft} citySelection={citySelection} setCitySelection={setCitySelection} busy={accountBusy} />}</section></main>
   );
 }

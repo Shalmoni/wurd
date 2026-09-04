@@ -37,3 +37,22 @@ drop trigger if exists award_friendship_xp_after_accept on public.friendships;
 create trigger award_friendship_xp_after_accept
 after insert or update of status on public.friendships
 for each row execute function private.award_friendship_xp();
+
+-- Backfill friendships that were accepted before this trigger existed.
+select private.award_xp(
+  requester_id,
+  'friend_match'::public.xp_event_kind,
+  10,
+  'friendship:' || id::text
+)
+from public.friendships
+where status = 'accepted'::public.friendship_status;
+
+select private.award_xp(
+  addressee_id,
+  'friend_match'::public.xp_event_kind,
+  10,
+  'friendship:' || id::text
+)
+from public.friendships
+where status = 'accepted'::public.friendship_status;
