@@ -265,8 +265,8 @@ type TodayTabProps = {
   feed: FeedWord[];
   feedLoading: boolean;
   spokeCount: number;
-  feedMode: 'Top today' | 'Friends';
-  setFeedMode: (mode: 'Top today' | 'Friends') => void;
+  feedMode: 'All' | 'Friends';
+  setFeedMode: (mode: 'All' | 'Friends') => void;
   setSubmitted: (post: PostWordInput) => Promise<void>;
   refreshFeed: () => Promise<void>;
   echoed: string[];
@@ -304,8 +304,8 @@ function TodayTab({ submitted, level, feed, feedLoading, spokeCount, feedMode, s
   const topPeople = [...livePeople].sort((left, right) => right[6] - left[6]).slice(0, 8);
   return (
     <section className="tab-view live-view">
-      <div className="today-toolbar"><div className="today-feed-summary"><span><i />{isSupabaseConfigured ? `${spokeCount} posted` : feedMode === 'Top today' ? '1,284 posted' : '8 friends posted'}</span><small>Tap someone&apos;s wurd to echo it.</small></div><div className="today-controls"><div className="today-mode cozy-segments"><button className={feedMode === 'Top today' ? 'active' : ''} onClick={() => setFeedMode('Top today')}>Top</button><button className={feedMode === 'Friends' ? 'active' : ''} onClick={() => setFeedMode('Friends')}>Friends</button></div><button className="feed-refresh" aria-label="Refresh today" title="Refresh" disabled={feedLoading} onClick={() => void refreshFeed()}><RefreshCw /></button></div></div>
-      {isSupabaseConfigured ? <div className={feedMode === 'Top today' ? 'live-grid' : 'friends-card-grid'}>{feedLoading ? <p className="feed-empty">Finding today&apos;s words…</p> : feed.length ? feed.map(item => <FeedCard key={item.id} item={item} ownWord={submitted} onEcho={() => toggleEcho(item.id, item.echoed_by_me)} />) : <p className="feed-empty">{feedMode === 'Friends' ? 'Your friends have not spoken yet.' : 'You are early. Today’s words will appear here.'}</p>}</div> : feedMode === 'Top today' ? <div className="live-grid">{topPeople.map((person, index) => <LiveCard key={`${person[0]}-${person[2]}`} person={person} echoed={echoed.includes(`live-${index}`)} onEcho={() => void toggleEcho(`live-${index}`)} />)}</div> : <div className="friends-card-grid">{friends.map(friend => <FriendCard key={friend.id} friend={friend} match={friend.word === submitted} echoed={echoed.includes(friend.id)} onEcho={() => void toggleEcho(friend.id)} />)}</div>}
+      <div className="today-toolbar"><div className="today-feed-summary"><span><i />{isSupabaseConfigured ? `${spokeCount} posted` : feedMode === 'All' ? '1,284 posted' : '8 friends posted'}</span><small>Tap someone&apos;s wurd to echo it.</small></div><div className="today-controls"><div className="today-mode cozy-segments"><button className={feedMode === 'All' ? 'active' : ''} onClick={() => setFeedMode('All')}>All</button><button className={feedMode === 'Friends' ? 'active' : ''} onClick={() => setFeedMode('Friends')}>Friends</button></div><button className="feed-refresh" aria-label="Refresh today" title="Refresh" disabled={feedLoading} onClick={() => void refreshFeed()}><RefreshCw /></button></div></div>
+      {isSupabaseConfigured ? <div className={feedMode === 'All' ? 'live-grid' : 'friends-card-grid'}>{feedLoading ? <p className="feed-empty">Finding today&apos;s words…</p> : feed.length ? feed.map(item => <FeedCard key={item.id} item={item} ownWord={submitted} onEcho={() => toggleEcho(item.id, item.echoed_by_me)} />) : <p className="feed-empty">{feedMode === 'Friends' ? 'Your friends have not spoken yet.' : 'You are early. Today’s words will appear here.'}</p>}</div> : feedMode === 'All' ? <div className="live-grid">{topPeople.map((person, index) => <LiveCard key={`${person[0]}-${person[2]}`} person={person} echoed={echoed.includes(`live-${index}`)} onEcho={() => void toggleEcho(`live-${index}`)} />)}</div> : <div className="friends-card-grid">{friends.map(friend => <FriendCard key={friend.id} friend={friend} match={friend.word === submitted} echoed={echoed.includes(friend.id)} onEcho={() => void toggleEcho(friend.id)} />)}</div>}
     </section>
   );
 }
@@ -490,7 +490,7 @@ export default function CozyPreview() {
   const [searchResults, setSearchResults] = useState<ProfileSummary[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [youPanel, setYouPanel] = useState<YouPanel>(null);
-  const [feedMode, setFeedMode] = useState<'Top today' | 'Friends'>('Top today');
+  const [feedMode, setFeedMode] = useState<'All' | 'Friends'>('All');
   const [authLoading, setAuthLoading] = useState(isSupabaseConfigured);
   const [feedLoading, setFeedLoading] = useState(false);
   const [appError, setAppError] = useState('');
@@ -540,13 +540,13 @@ export default function CozyPreview() {
   async function loadFeed(mode = feedMode, activeUser = user) {
     if (!supabase || !activeUser) return;
     setFeedLoading(true);
-    const result = await supabase.rpc('feed_words', { p_date: localDayKey(), p_limit: mode === 'Friends' ? 500 : 9, p_friends_only: mode === 'Friends' });
+    const result = await supabase.rpc('feed_words', { p_date: localDayKey(), p_limit: 0, p_friends_only: mode === 'Friends' });
     setFeedLoading(false);
     if (result.error) throw result.error;
     const rows = (result.data || []) as FeedWord[];
     setSpokeCount(rows[0]?.spoke_count || 0);
     const visibleRows = rows.filter(item => item.user_id !== activeUser.id && isWithinTodayWindow(item.created_at));
-    setFeed(mode === 'Friends' ? visibleRows : visibleRows.slice(0, 8));
+    setFeed(visibleRows);
   }
 
   async function loadConnections(activeUser = user) {
