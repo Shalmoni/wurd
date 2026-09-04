@@ -997,6 +997,11 @@ html, body, #root { height: 100%; overflow: hidden; overscroll-behavior: none; }
   letter-spacing: 0;
   white-space: nowrap;
 }
+.header-xp .xp-prefix {
+  color: #111;
+  font-size: .78em;
+  line-height: 1;
+}
 .header-xp > em { font-size: 11px; }
 .header-xp > .xp-bar {
   min-width: 24px;
