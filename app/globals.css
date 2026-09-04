@@ -871,6 +871,8 @@ html, body, #root { height: 100%; overflow: hidden; overscroll-behavior: none; }
   color: #20352d;
   font-size: clamp(11px, 1.65svh, 13px);
   font-weight: 800;
+  line-height: 1.35;
+  padding-bottom: 2px;
 }
 .today-app .live-person small {
   display: block !important;
@@ -1198,16 +1200,23 @@ html, body, #root { height: 100%; overflow: hidden; overscroll-behavior: none; }
   .fixed-app.active-you .calendar-swipe-cue { flex-basis: 24px; font-size: 9px; }
 }
 
-/* Today-card wurds always stay on one line and scale with character count. */
+/* Today-card wurds reserve the echo lane and scale to their rendered width. */
 .today-app .live-word {
-  width: calc(100% - 52px);
-  max-width: calc(100% - 52px);
+  width: calc(100% - 60px);
+  max-width: calc(100% - 60px);
   margin-right: 0;
-  overflow: hidden;
+  padding: 2px 0;
+  line-height: 1.05;
+  overflow: visible;
   overflow-wrap: normal;
-  text-overflow: clip;
   word-break: normal;
   white-space: nowrap;
+}
+.today-app .live-word-content {
+  display: inline-block;
+  min-width: max-content;
+  transform: scale(var(--word-scale, 1));
+  transform-origin: left center;
 }
 .today-app .live-word.word-fit-medium { font-size: clamp(13px, 2.65svh, 21px); }
 .today-app .live-word.word-fit-long { font-size: clamp(10px, 1.9svh, 15px); }

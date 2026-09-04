@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import type { SyntheticEvent } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import type { CSSProperties, SyntheticEvent } from 'react';
 import type { User } from '@supabase/supabase-js';
 import {
   Check, CircleUserRound, Flame, Globe2, Lock, LogOut,
@@ -205,13 +205,39 @@ function wordLengthClass(word: string) {
   return 'word-fit-short';
 }
 
+function CardWord({ word, emoji, color, wordStyle = 'bold' }: { word: string; emoji?: string | null; color?: string; wordStyle?: WordStyle }) {
+  const frame = useRef<HTMLElement>(null);
+  const text = useRef<HTMLSpanElement>(null);
+  const [scale, setScale] = useState(1);
+
+  useLayoutEffect(() => {
+    const frameElement = frame.current;
+    const textElement = text.current;
+    if (!frameElement || !textElement) return;
+
+    const fit = () => {
+      const availableWidth = frameElement.clientWidth;
+      const naturalWidth = textElement.scrollWidth;
+      setScale(availableWidth > 0 && naturalWidth > 0 ? Math.min(1, availableWidth / naturalWidth) : 1);
+    };
+
+    fit();
+    const observer = new ResizeObserver(fit);
+    observer.observe(frameElement);
+    void document.fonts?.ready.then(fit);
+    return () => observer.disconnect();
+  }, [word, emoji, wordStyle]);
+
+  return <strong ref={frame} className={`live-word ${wordLengthClass(word)} word-style-${wordStyle}`} style={{ color }}><span ref={text} className="live-word-content" style={{ '--word-scale': scale } as CSSProperties}>{word}{emoji && <span> {emoji}</span>}</span></strong>;
+}
+
 function LiveCard({ person, echoed, onEcho }: { person: typeof livePeople[number]; echoed: boolean; onEcho: () => void }) {
   const [name, , word, city, time, , count] = person;
   return (
     <article className={`live-card ${echoed ? 'echoed' : ''}`}>
       <button className="card-echo-action" aria-pressed={echoed} aria-label={`${name} chose ${word}. Tap to echo.`} onClick={onEcho}>
         <div className="live-person"><span><strong>{name.toLowerCase()}</strong><small>{city} · {time}</small></span></div>
-        <strong className={`live-word ${wordLengthClass(word)}`}>{word}</strong>
+        <CardWord word={word} />
       </button>
       <EchoStat count={count + (echoed ? 1 : 0)} />
     </article>
@@ -228,7 +254,7 @@ function timeAgo(value: string, now = Date.now()) {
 function FeedCard({ item, ownWord, onEcho }: { item: FeedWord; ownWord: string; onEcho: () => void }) {
   const name = usernameLabel(item.username);
   const match = item.word.toLocaleUpperCase() === ownWord.toLocaleUpperCase();
-  const content = <><div className="live-person"><span><strong>{name}</strong><small>{item.city || 'Location not added'} · {timeAgo(item.created_at)}</small></span></div><strong className={`live-word ${wordLengthClass(item.word)} word-style-${item.word_style || 'bold'}`} style={{ color: wordColorValues[item.color] }}>{item.word}{item.emoji && <span> {item.emoji}</span>}</strong></>;
+  const content = <><div className="live-person"><span><strong>{name}</strong><small>{item.city || 'Location not added'} · {timeAgo(item.created_at)}</small></span></div><CardWord word={item.word} emoji={item.emoji} color={wordColorValues[item.color]} wordStyle={item.word_style || 'bold'} /></>;
   if (match) return <article className="live-card friend-square exact-match" aria-label={`${name} chose the same word as you`}><div className="card-static-content">{content}</div><EchoStat count={item.echo_count} /></article>;
   return <article className={`live-card friend-square ${item.echoed_by_me ? 'echoed' : ''}`}><button className="card-echo-action" aria-pressed={item.echoed_by_me} aria-label={`${name} chose ${item.word}. Tap to echo.`} onClick={onEcho}>{content}</button><EchoStat count={item.echo_count} /></article>;
 }
@@ -284,7 +310,7 @@ function TodayTab({ submitted, level, feed, feedLoading, spokeCount, feedMode, s
 }
 
 function FriendCard({ friend, match, echoed, onEcho }: { friend: typeof friends[number]; match: boolean; echoed: boolean; onEcho: () => void }) {
-  const content = <><div className="live-person"><span><strong>{usernameLabel(friend.handle)}</strong><small>{friendCities[friend.id]} · {friend.time} ago</small></span></div><strong className={`live-word ${wordLengthClass(friend.word)}`}>{friend.word}</strong></>;
+  const content = <><div className="live-person"><span><strong>{usernameLabel(friend.handle)}</strong><small>{friendCities[friend.id]} · {friend.time} ago</small></span></div><CardWord word={friend.word} /></>;
   if (match) return <article className="live-card friend-square exact-match" aria-label={`${friend.name} chose the same word as you`}><div className="card-static-content">{content}</div><EchoStat count={friend.echoes} /></article>;
   return <article className={`live-card friend-square ${echoed ? 'echoed' : ''}`}><button className="card-echo-action" aria-pressed={echoed} aria-label={`${friend.name} chose ${friend.word}. Tap to echo.`} onClick={onEcho}>{content}</button><EchoStat count={friend.echoes + (echoed ? 1 : 0)} /></article>;
 }
