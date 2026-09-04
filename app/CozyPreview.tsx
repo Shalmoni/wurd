@@ -168,7 +168,7 @@ function locationLabel(city?: string | null, countryCode?: string | null) {
 function BrandHeader({ tab, submitted, submittedAt, now, emoji, color, echoes, xp, level, streak, username, memberSince, city, countryCode }: { tab: Tab; submitted: string; submittedAt?: string | null; now: number; emoji: string | null; color: WordColor; echoes: number; xp: number; level: number; streak: number; username?: string; memberSince?: string | null; city?: string | null; countryCode?: string | null }) {
   const levelProgress = levelProgressFor(xp, level);
   const multiplier = multiplierForStreak(streak);
-  const topRow = <div className="today-brand-row"><div className="today-brand">wurd</div><div className="header-xp"><strong className="xp-total"><span className="xp-prefix">XP</span>{xp}</strong><span className="xp-progress"><em>{multiplier.toFixed(1)}×</em><i className="xp-bar"><b style={{ width: `${levelProgress}%` }} /></i></span><span className="xp-streak"><Flame />{streak}</span></div></div>;
+  const topRow = <div className="today-brand-row"><div className="today-brand">wurd</div><Popover><PopoverTrigger className="header-xp" aria-label="Learn how XP works"><strong className="xp-total"><span className="xp-prefix">XP</span>{xp}</strong><span className="xp-progress"><em>{multiplier.toFixed(1)}×</em><i className="xp-bar"><b style={{ width: `${levelProgress}%` }} /></i></span><span className="xp-streak"><Flame />{streak}</span></PopoverTrigger><PopoverContent side="bottom" sideOffset={7} className="echo-tooltip">Post daily, build your streak, and collect echoes to unlock new features.</PopoverContent></Popover></div>;
   if (tab === 'you') return (
     <header className="today-app-header you-identity-header">
       {topRow}
@@ -178,7 +178,7 @@ function BrandHeader({ tab, submitted, submittedAt, now, emoji, color, echoes, x
   if (submitted) return (
     <header className="today-app-header">
       {topRow}
-      <strong className="today-word" style={{ color: wordColorValues[color] }}>{submitted}{emoji && <span className="today-emoji"> {emoji}</span>}</strong>
+      <Popover><PopoverTrigger className="today-word" style={{ color: wordColorValues[color] }} aria-label={`${submitted}. Your wurd today.`}>{submitted}{emoji && <span className="today-emoji"> {emoji}</span>}</PopoverTrigger><PopoverContent side="bottom" sideOffset={7} className="echo-tooltip">This is your wurd today. Come back tomorrow to say a new wurd.</PopoverContent></Popover>
       <div className="today-meta-row"><p>{submittedAt ? timeAgo(submittedAt, now) : 'now'} · {locationLabel(city, countryCode)}</p><EchoStat count={echoes} /></div>
     </header>
   );
@@ -266,7 +266,7 @@ function TodayTab({ submitted, level, feed, feedLoading, spokeCount, feedMode, s
   const topPeople = [...livePeople].sort((left, right) => right[6] - left[6]).slice(0, 8);
   return (
     <section className="tab-view live-view">
-      <div className="today-toolbar"><div className="today-feed-summary"><span><i />{isSupabaseConfigured ? `${spokeCount} ${spokeCount === 1 ? 'wurd' : 'wurds'}` : feedMode === 'Top today' ? '1,284 wurds' : '8 of 12 friends'}</span><small>Tap someone&apos;s wurd to echo it.</small></div><div className="today-mode cozy-segments"><button className={feedMode === 'Top today' ? 'active' : ''} onClick={() => setFeedMode('Top today')}>Top</button><button className={feedMode === 'Friends' ? 'active' : ''} onClick={() => setFeedMode('Friends')}>Friends</button></div></div>
+      <div className="today-toolbar"><div className="today-feed-summary"><span><i />{isSupabaseConfigured ? `${spokeCount} posted` : feedMode === 'Top today' ? '1,284 posted' : '8 friends posted'}</span><small>Tap someone&apos;s wurd to echo it.</small></div><div className="today-mode cozy-segments"><button className={feedMode === 'Top today' ? 'active' : ''} onClick={() => setFeedMode('Top today')}>Top</button><button className={feedMode === 'Friends' ? 'active' : ''} onClick={() => setFeedMode('Friends')}>Friends</button></div></div>
       {isSupabaseConfigured ? <div className={feedMode === 'Top today' ? 'live-grid' : 'friends-card-grid'}>{feedLoading ? <p className="feed-empty">Finding today&apos;s words…</p> : feed.length ? feed.map(item => <FeedCard key={item.id} item={item} ownWord={submitted} onEcho={() => toggleEcho(item.id, item.echoed_by_me)} />) : <p className="feed-empty">{feedMode === 'Friends' ? 'Your friends have not spoken yet.' : 'You are early. Today’s words will appear here.'}</p>}</div> : feedMode === 'Top today' ? <div className="live-grid">{topPeople.map((person, index) => <LiveCard key={`${person[0]}-${person[2]}`} person={person} echoed={echoed.includes(`live-${index}`)} onEcho={() => void toggleEcho(`live-${index}`)} />)}</div> : <div className="friends-card-grid">{friends.map(friend => <FriendCard key={friend.id} friend={friend} match={friend.word === submitted} echoed={echoed.includes(friend.id)} onEcho={() => void toggleEcho(friend.id)} />)}</div>}
     </section>
   );

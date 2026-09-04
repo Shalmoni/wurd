@@ -296,11 +296,12 @@ button { cursor: pointer; }
 .today-app-header { min-height: clamp(158px, 23svh, 214px); flex: 0 0 clamp(158px, 23svh, 214px); display: grid; grid-template-rows: auto 1fr auto; padding: 18px 22px 14px; border-bottom: 1px solid #e6f0ec; background: #fff; }
 .today-brand-row, .today-meta-row { display: flex; align-items: center; justify-content: space-between; }
 .today-brand { color: #00b979; font-size: 29px; line-height: 1; font-weight: 900; letter-spacing: -.07em; }
-.header-xp { display: flex; align-items: center; gap: 6px; padding: 9px 13px; border: 1px solid #c5eedf; border-radius: 999px; background: #effff9; color: #008e5c; }
+.header-xp { display: flex; align-items: center; gap: 6px; padding: 9px 13px; border: 1px solid #c5eedf; border-radius: 999px; background: #effff9; color: #008e5c; font: inherit; cursor: pointer; }
 .header-xp svg { width: 13px; height: 13px; }
 .header-xp strong { font-size: 10px; }
 .header-xp small { color: #6c8179; font-size: 7px; font-weight: 800; letter-spacing: .08em; }
-.today-word { align-self: center; justify-self: center; max-width: 92%; color: #00b979; font-size: clamp(36px, 8vw, 58px); line-height: .86; font-weight: 900; letter-spacing: -.075em; overflow-wrap: anywhere; }
+.today-word { align-self: center; justify-self: center; max-width: 92%; padding: 0; border: 0; background: transparent; color: #00b979; font-family: inherit; font-size: clamp(36px, 8vw, 58px); line-height: .86; font-weight: 900; letter-spacing: -.075em; text-align: center; overflow-wrap: anywhere; cursor: pointer; }
+.header-xp:focus-visible, .today-word:focus-visible { outline: 2px solid #00b979; outline-offset: 3px; }
 .today-meta-row p { margin: 0; font-family: Georgia, 'Times New Roman', serif; font-size: 17px; }
 .today-meta-row .echo-count { display: flex; align-items: center; gap: 8px; color: #647970; font-size: 16px; font-weight: 750; }
 .today-meta-row svg { width: 15px; height: 15px; color: #00b979; }
