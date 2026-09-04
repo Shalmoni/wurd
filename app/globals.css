@@ -1133,6 +1133,25 @@ html, body, #root { height: 100%; overflow: hidden; overscroll-behavior: none; }
   padding: 3px;
 }
 .today-toolbar .today-mode button { font-size: 12px; }
+.today-controls { flex: 0 0 auto; display: flex; align-items: center; gap: 7px; }
+.feed-refresh {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid #bdebd9;
+  border-radius: 50%;
+  background: #effff9;
+  color: #008e5c;
+}
+.feed-refresh svg { width: 18px; height: 18px; }
+.feed-refresh:hover, .feed-refresh:focus-visible { border-color: #00c982; background: #e1fff4; }
+.feed-refresh:focus-visible { outline: 2px solid #00b979; outline-offset: 2px; }
+.feed-refresh:disabled { opacity: .55; cursor: wait; }
+.feed-refresh:disabled svg { animation: feed-refresh-spin .8s linear infinite; }
+@keyframes feed-refresh-spin { to { transform: rotate(360deg); } }
 .today-app .echo-count { font-size: clamp(11px, 1.6svh, 13px); font-weight: 800; }
 .today-app .echo-count svg { width: 15px; height: 15px; }
 

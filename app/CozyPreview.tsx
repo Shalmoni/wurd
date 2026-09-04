@@ -5,7 +5,7 @@ import type { CSSProperties, SyntheticEvent } from 'react';
 import type { User } from '@supabase/supabase-js';
 import {
   Check, CircleUserRound, Flame, Globe2, Lock, LogOut,
-  MapPin, Search, Settings, Sun, UserPlus, UsersRound, Waves,
+  MapPin, RefreshCw, Search, Settings, Sun, UserPlus, UsersRound, Waves,
 } from 'lucide-react';
 import { geoMercator, geoNaturalEarth1, geoPath } from 'd3-geo';
 import { feature } from 'topojson-client';
@@ -268,11 +268,12 @@ type TodayTabProps = {
   feedMode: 'Top today' | 'Friends';
   setFeedMode: (mode: 'Top today' | 'Friends') => void;
   setSubmitted: (post: PostWordInput) => Promise<void>;
+  refreshFeed: () => Promise<void>;
   echoed: string[];
   toggleEcho: (id: number | string, echoed?: boolean) => Promise<void>;
 };
 
-function TodayTab({ submitted, level, feed, feedLoading, spokeCount, feedMode, setFeedMode, setSubmitted, echoed, toggleEcho }: TodayTabProps) {
+function TodayTab({ submitted, level, feed, feedLoading, spokeCount, feedMode, setFeedMode, setSubmitted, refreshFeed, echoed, toggleEcho }: TodayTabProps) {
   const [draft, setDraft] = useState('');
   const [pending, setPending] = useState('');
   const [emoji, setEmoji] = useState<string | null>(null);
@@ -303,7 +304,7 @@ function TodayTab({ submitted, level, feed, feedLoading, spokeCount, feedMode, s
   const topPeople = [...livePeople].sort((left, right) => right[6] - left[6]).slice(0, 8);
   return (
     <section className="tab-view live-view">
-      <div className="today-toolbar"><div className="today-feed-summary"><span><i />{isSupabaseConfigured ? `${spokeCount} posted` : feedMode === 'Top today' ? '1,284 posted' : '8 friends posted'}</span><small>Tap someone&apos;s wurd to echo it.</small></div><div className="today-mode cozy-segments"><button className={feedMode === 'Top today' ? 'active' : ''} onClick={() => setFeedMode('Top today')}>Top</button><button className={feedMode === 'Friends' ? 'active' : ''} onClick={() => setFeedMode('Friends')}>Friends</button></div></div>
+      <div className="today-toolbar"><div className="today-feed-summary"><span><i />{isSupabaseConfigured ? `${spokeCount} posted` : feedMode === 'Top today' ? '1,284 posted' : '8 friends posted'}</span><small>Tap someone&apos;s wurd to echo it.</small></div><div className="today-controls"><div className="today-mode cozy-segments"><button className={feedMode === 'Top today' ? 'active' : ''} onClick={() => setFeedMode('Top today')}>Top</button><button className={feedMode === 'Friends' ? 'active' : ''} onClick={() => setFeedMode('Friends')}>Friends</button></div><button className="feed-refresh" aria-label="Refresh today" title="Refresh" disabled={feedLoading} onClick={() => void refreshFeed()}><RefreshCw /></button></div></div>
       {isSupabaseConfigured ? <div className={feedMode === 'Top today' ? 'live-grid' : 'friends-card-grid'}>{feedLoading ? <p className="feed-empty">Finding today&apos;s words…</p> : feed.length ? feed.map(item => <FeedCard key={item.id} item={item} ownWord={submitted} onEcho={() => toggleEcho(item.id, item.echoed_by_me)} />) : <p className="feed-empty">{feedMode === 'Friends' ? 'Your friends have not spoken yet.' : 'You are early. Today’s words will appear here.'}</p>}</div> : feedMode === 'Top today' ? <div className="live-grid">{topPeople.map((person, index) => <LiveCard key={`${person[0]}-${person[2]}`} person={person} echoed={echoed.includes(`live-${index}`)} onEcho={() => void toggleEcho(`live-${index}`)} />)}</div> : <div className="friends-card-grid">{friends.map(friend => <FriendCard key={friend.id} friend={friend} match={friend.word === submitted} echoed={echoed.includes(friend.id)} onEcho={() => void toggleEcho(friend.id)} />)}</div>}
     </section>
   );
@@ -773,7 +774,7 @@ export default function CozyPreview() {
   return (
     <main className={`cozy-stage fixed-app active-${tab} ${submitted || tab === 'you' ? 'today-app' : ''}`}><section className="cozy-shell"><BrandHeader tab={tab} submitted={submitted} submittedAt={submittedAt} now={clockNow} emoji={submittedEmoji} color={submittedColor} wordStyle={submittedWordStyle} echoes={ownEchoes} xp={xp} level={level} streak={streak} username={profile?.username} memberSince={profile?.created_at} city={profile?.city} countryCode={profile?.country_code} /><div className="cozy-main">
       {appError && <button className="app-error" onClick={() => setAppError('')}>{appError}</button>}
-      {tab === 'today' && <TodayTab submitted={submitted} level={level} feed={feed.filter(item => isWithinTodayWindow(item.created_at, clockNow))} feedLoading={feedLoading} spokeCount={spokeCount} feedMode={feedMode} setFeedMode={setFeedMode} setSubmitted={postWord} echoed={echoed} toggleEcho={toggleEcho} />}
+      {tab === 'today' && <TodayTab submitted={submitted} level={level} feed={feed.filter(item => isWithinTodayWindow(item.created_at, clockNow))} feedLoading={feedLoading} spokeCount={spokeCount} feedMode={feedMode} setFeedMode={setFeedMode} setSubmitted={postWord} refreshFeed={async () => { if (!user) { window.location.reload(); return; } setAppError(''); try { await Promise.all([loadAccount(user), loadFeed(feedMode, user)]); } catch (reason) { setAppError(readableError(reason, 'Could not refresh today.')); } }} echoed={echoed} toggleEcho={toggleEcho} />}
       {tab === 'world' && <WorldTab />}
       {tab === 'you' && <YouTab history={history} onOpenPanel={panel => { setAppError(''); setSearchResults([]); setYouPanel(panel); if (panel === 'friends') void loadConnections(user || undefined).catch(reason => setAppError(readableError(reason, 'Could not load friends.'))); }} />}
     </div><nav className="cozy-nav" aria-label="App navigation">{tabs.map(item => {
