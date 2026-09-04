@@ -15,12 +15,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { isSupabaseConfigured, supabase, type FeedWord, type WordColor, type WurdProfile } from '@/lib/supabase';
+import { isSupabaseConfigured, supabase, type FeedWord, type WordColor, type WordStyle, type WurdProfile } from '@/lib/supabase';
 
 type Tab = 'today' | 'world' | 'you';
 type Scope = 'World' | 'Israel' | 'Nearby';
-type PostWordInput = { word: string; emoji: string | null; color: WordColor };
-type DiaryWord = { id: number; local_date: string; word: string; emoji: string | null; color: WordColor; created_at: string; echo_count: number };
+type PostWordInput = { word: string; emoji: string | null; color: WordColor; wordStyle: WordStyle };
+type DiaryWord = { id: number; local_date: string; word: string; emoji: string | null; color: WordColor; word_style: WordStyle; city: string | null; created_at: string; echo_count: number };
 type ProfileSummary = Pick<WurdProfile, 'id' | 'username' | 'city'>;
 type Friendship = {
   id: number;
@@ -132,9 +132,10 @@ function multiplierForStreak(streak: number) {
 }
 
 function levelProgressFor(xp: number, level: number) {
-  if (level >= 3) return 100;
-  const floor = level === 1 ? 0 : 100;
-  const ceiling = level === 1 ? 100 : 300;
+  if (level >= 4) return 100;
+  const thresholds = [0, 0, 100, 300, 600];
+  const floor = thresholds[level] ?? 0;
+  const ceiling = thresholds[level + 1] ?? 600;
   return Math.min(100, Math.max(0, ((xp - floor) / (ceiling - floor)) * 100));
 }
 
@@ -165,10 +166,10 @@ function locationLabel(city?: string | null, countryCode?: string | null) {
   }
 }
 
-function BrandHeader({ tab, submitted, submittedAt, now, emoji, color, echoes, xp, level, streak, username, memberSince, city, countryCode }: { tab: Tab; submitted: string; submittedAt?: string | null; now: number; emoji: string | null; color: WordColor; echoes: number; xp: number; level: number; streak: number; username?: string; memberSince?: string | null; city?: string | null; countryCode?: string | null }) {
+function BrandHeader({ tab, submitted, submittedAt, now, emoji, color, wordStyle, echoes, xp, level, streak, username, memberSince, city, countryCode }: { tab: Tab; submitted: string; submittedAt?: string | null; now: number; emoji: string | null; color: WordColor; wordStyle: WordStyle; echoes: number; xp: number; level: number; streak: number; username?: string; memberSince?: string | null; city?: string | null; countryCode?: string | null }) {
   const levelProgress = levelProgressFor(xp, level);
   const multiplier = multiplierForStreak(streak);
-  const topRow = <div className="today-brand-row"><div className="today-brand">wurd</div><Popover><PopoverTrigger className="header-xp" aria-label="Learn how XP works"><strong className="xp-total"><span className="xp-prefix">XP</span>{xp}</strong><span className="xp-progress"><em>{multiplier.toFixed(1)}×</em><i className="xp-bar"><b style={{ width: `${levelProgress}%` }} /></i></span><span className="xp-streak"><Flame />{streak}</span></PopoverTrigger><PopoverContent side="bottom" sideOffset={7} className="echo-tooltip">Post daily, build your streak, and collect echoes to unlock new features.</PopoverContent></Popover></div>;
+  const topRow = <div className="today-brand-row"><div className="today-brand">wurd</div><div className="header-progress"><span className="level-label">LVL <b>{level}</b></span><Popover><PopoverTrigger className="header-xp" aria-label={`Level ${level}. Learn how XP works`}><strong className="xp-total"><span className="xp-prefix">XP</span>{xp}</strong><span className="xp-progress"><em>{multiplier.toFixed(1)}×</em><i className="xp-bar"><b style={{ width: `${levelProgress}%` }} /></i></span><span className="xp-streak"><Flame />{streak}</span></PopoverTrigger><PopoverContent side="bottom" sideOffset={7} className="echo-tooltip">Post daily, build your streak, and collect echoes to unlock new features.</PopoverContent></Popover></div></div>;
   if (tab === 'you') return (
     <header className="today-app-header you-identity-header">
       {topRow}
@@ -178,7 +179,7 @@ function BrandHeader({ tab, submitted, submittedAt, now, emoji, color, echoes, x
   if (submitted) return (
     <header className="today-app-header">
       {topRow}
-      <Popover><PopoverTrigger className="today-word" style={{ color: wordColorValues[color] }} aria-label={`${submitted}. Your wurd today.`}>{submitted}{emoji && <span className="today-emoji"> {emoji}</span>}</PopoverTrigger><PopoverContent side="bottom" sideOffset={7} className="echo-tooltip">This is your wurd today. Come back tomorrow to say a new wurd.</PopoverContent></Popover>
+      <Popover><PopoverTrigger className={`today-word word-style-${wordStyle}`} style={{ color: wordColorValues[color] }} aria-label={`${submitted}. Your wurd today.`}>{submitted}{emoji && <span className="today-emoji"> {emoji}</span>}</PopoverTrigger><PopoverContent side="bottom" sideOffset={7} className="echo-tooltip">This is your wurd today. Come back tomorrow to say a new wurd.</PopoverContent></Popover>
       <div className="today-meta-row"><p>{submittedAt ? timeAgo(submittedAt, now) : 'now'} · {locationLabel(city, countryCode)}</p><EchoStat count={echoes} /></div>
     </header>
   );
@@ -219,7 +220,7 @@ function timeAgo(value: string, now = Date.now()) {
 function FeedCard({ item, ownWord, onEcho }: { item: FeedWord; ownWord: string; onEcho: () => void }) {
   const name = usernameLabel(item.username);
   const match = item.word.toLocaleUpperCase() === ownWord.toLocaleUpperCase();
-  const content = <><div className="live-person"><span><strong>{name}</strong><small>{item.city || 'Location not added'} · {timeAgo(item.created_at)}</small></span></div><strong className="live-word" style={{ color: wordColorValues[item.color] }}>{item.word}{item.emoji && <span> {item.emoji}</span>}</strong></>;
+  const content = <><div className="live-person"><span><strong>{name}</strong><small>{item.city || 'Location not added'} · {timeAgo(item.created_at)}</small></span></div><strong className={`live-word word-style-${item.word_style || 'bold'}`} style={{ color: wordColorValues[item.color] }}>{item.word}{item.emoji && <span> {item.emoji}</span>}</strong></>;
   if (match) return <article className="live-card friend-square exact-match" aria-label={`${name} chose the same word as you`}><div className="card-static-content">{content}</div><EchoStat count={item.echo_count} /></article>;
   return <article className={`live-card friend-square ${item.echoed_by_me ? 'echoed' : ''}`}><button className="card-echo-action" aria-pressed={item.echoed_by_me} aria-label={`${name} chose ${item.word}. Tap to echo.`} onClick={onEcho}>{content}</button><EchoStat count={item.echo_count} /></article>;
 }
@@ -242,6 +243,7 @@ function TodayTab({ submitted, level, feed, feedLoading, spokeCount, feedMode, s
   const [pending, setPending] = useState('');
   const [emoji, setEmoji] = useState<string | null>(null);
   const [color, setColor] = useState<WordColor>('mint');
+  const [wordStyle, setWordStyle] = useState<WordStyle>('bold');
   const [error, setError] = useState('');
   const [posting, setPosting] = useState(false);
   function submit(event: SyntheticEvent<HTMLFormElement>) {
@@ -253,13 +255,14 @@ function TodayTab({ submitted, level, feed, feedLoading, spokeCount, feedMode, s
   if (!submitted) return (
     <section className="tab-view today-view"><div className="daily-prompt">
       {!pending ? <><span className="soft-icon"><Sun /></span><p>{todayDateTimeLabel()}</p><h1>What&apos;s your<br />word?</h1><form onSubmit={submit}><Input maxLength={20} value={draft} onChange={event => { setDraft(event.target.value); setError(''); }} placeholder="TYPE YOUR WORD" /><Button type="submit">Continue</Button></form>{error && <em>{error}</em>}</> :
-      <div className="confirm-word"><span>YOUR WORD FOR {todayLabel().toUpperCase()}</span><h2 style={{ color: wordColorValues[color] }}>{pending}{emoji && ` ${emoji}`}</h2><p>This is the only word you can post today. At midnight, you&apos;ll get a new one.</p>
+      <div className="confirm-word"><span>YOUR WORD FOR {todayLabel().toUpperCase()}</span><h2 className={`word-style-${wordStyle}`} style={{ color: wordColorValues[color] }}>{pending}{emoji && ` ${emoji}`}</h2><p>This is the only word you can post today. At midnight, you&apos;ll get a new one.</p>
         {level >= 2 && <div className="reward-customizer">
-          <section><b>ADD ONE EMOJI</b><div className="emoji-options"><button className={!emoji ? 'active' : ''} onClick={() => setEmoji(null)}>None</button>{emojiChoices.map(item => <button className={emoji === item ? 'active' : ''} onClick={() => setEmoji(item)} key={item}>{item}</button>)}</div></section>
-          {level >= 3 && <section><b>WORD COLOR</b><div className="color-options">{(Object.keys(wordColorValues) as WordColor[]).map(item => <button className={color === item ? 'active' : ''} style={{ background: wordColorValues[item] }} aria-label={`${item} word color`} onClick={() => setColor(item)} key={item} />)}</div></section>}
+          <section><b>WORD STYLE</b><div className="style-options"><button className={wordStyle === 'bold' ? 'active' : ''} onClick={() => setWordStyle('bold')}>Bold</button><button className={wordStyle === 'serif' ? 'active word-style-serif' : 'word-style-serif'} onClick={() => setWordStyle('serif')}>Serif</button></div></section>
+          {level >= 3 && <section><b>ADD ONE EMOJI</b><div className="emoji-options"><button className={!emoji ? 'active' : ''} onClick={() => setEmoji(null)}>None</button>{emojiChoices.map(item => <button className={emoji === item ? 'active' : ''} onClick={() => setEmoji(item)} key={item}>{item}</button>)}</div></section>}
+          {level >= 4 && <section><b>WORD COLOR</b><div className="color-options">{(Object.keys(wordColorValues) as WordColor[]).map(item => <button className={color === item ? 'active' : ''} style={{ background: wordColorValues[item] }} aria-label={`${item} word color`} onClick={() => setColor(item)} key={item} />)}</div></section>}
         </div>}
         {error && <em className="post-error">{error}</em>}
-        <div className="confirm-actions"><Button variant="outline" disabled={posting} onClick={() => setPending('')}>Go back</Button><Button disabled={posting} onClick={async () => { setPosting(true); setError(''); try { await setSubmitted({ word: pending, emoji, color }); } catch (reason) { setError(reason instanceof Error ? reason.message : 'Could not post your word.'); } finally { setPosting(false); } }}>{posting ? 'Posting…' : 'Post my word'}</Button></div>
+        <div className="confirm-actions"><Button variant="outline" disabled={posting} onClick={() => setPending('')}>Go back</Button><Button disabled={posting} onClick={async () => { setPosting(true); setError(''); try { await setSubmitted({ word: pending, emoji, color, wordStyle }); } catch (reason) { setError(reason instanceof Error ? reason.message : 'Could not post your word.'); } finally { setPosting(false); } }}>{posting ? 'Posting…' : 'Post my word'}</Button></div>
       </div>}
     </div></section>
   );
@@ -328,7 +331,7 @@ function YouTab({ history, onOpenPanel }: { history: DiaryWord[]; onOpenPanel: (
   }, []);
   const diary = [...history].reverse().map(item => {
     const date = new Date(`${item.local_date}T12:00:00`);
-    return { id: item.id, weekday: new Intl.DateTimeFormat('en', { weekday: 'long' }).format(date), day: new Intl.DateTimeFormat('en', { day: 'numeric' }).format(date), month: new Intl.DateTimeFormat('en', { month: 'short' }).format(date), word: item.word, emoji: item.emoji, color: item.color, echoes: item.echo_count, isToday: item.local_date === localDayKey() };
+    return { id: item.id, weekday: new Intl.DateTimeFormat('en', { weekday: 'long' }).format(date), day: new Intl.DateTimeFormat('en', { day: 'numeric' }).format(date), month: new Intl.DateTimeFormat('en', { month: 'short' }).format(date), word: item.word, emoji: item.emoji, color: item.color, wordStyle: item.word_style || 'bold', city: item.city, echoes: item.echo_count, isToday: item.local_date === localDayKey() };
   });
   return (
     <section className="tab-view you-view">
@@ -338,7 +341,7 @@ function YouTab({ history, onOpenPanel }: { history: DiaryWord[]; onOpenPanel: (
         <button onClick={() => onOpenPanel('settings')}><Settings /><span>Settings</span></button>
       </div>
       {diary.length > 0 && <div className="calendar-swipe-cue">SWIPE DAYS ↑</div>}
-      {diary.length > 0 ? <div className="day-ribbon" ref={dayTrack} aria-label="Your recent words">{diary.map(item => <article className={`diary-day-card ${item.isToday ? 'is-today' : ''}`} key={item.id}><span>{item.weekday}</span><div className="day-date"><i>{item.month}</i><strong>{item.day}</strong></div><b style={{ color: wordColorValues[item.color] }}>{item.word}{item.emoji && ` ${item.emoji}`}</b><EchoStat count={item.echoes} />{item.isToday && <em>TODAY</em>}</article>)}</div> : <div className="diary-empty"><span><Sun /></span><h2>Your words start here.</h2><p>Post your first word and it will become the first day in your story.</p></div>}
+      {diary.length > 0 ? <div className="day-ribbon" ref={dayTrack} aria-label="Your recent words">{diary.map(item => <article className={`diary-day-card ${item.isToday ? 'is-today' : ''}`} key={item.id}><span>{item.weekday}</span><div className="day-date"><i>{item.month}</i><strong>{item.day}</strong></div><b className={`word-style-${item.wordStyle}`} style={{ color: wordColorValues[item.color] }}>{item.word}{item.emoji && ` ${item.emoji}`}</b><small className="diary-location"><MapPin />{item.city || 'Location not added'}</small><EchoStat count={item.echoes} />{item.isToday && <em>TODAY</em>}</article>)}</div> : <div className="diary-empty"><span><Sun /></span><h2>Your words start here.</h2><p>Post your first word and it will become the first day in your story.</p></div>}
     </section>
   );
 }
@@ -441,6 +444,7 @@ export default function CozyPreview() {
   const [submittedAt, setSubmittedAt] = useState<string | null>(null);
   const [submittedEmoji, setSubmittedEmoji] = useState<string | null>(null);
   const [submittedColor, setSubmittedColor] = useState<WordColor>('mint');
+  const [submittedWordStyle, setSubmittedWordStyle] = useState<WordStyle>('bold');
   const [echoed, setEchoed] = useState<string[]>([]);
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<WurdProfile | null>(null);
@@ -468,7 +472,7 @@ export default function CozyPreview() {
     try {
       const [profileResult, wordResult, historyResult] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', activeUser.id).single(),
-        supabase.from('daily_words').select('id, local_date, word, emoji, color, created_at').eq('user_id', activeUser.id).eq('local_date', localDayKey()).maybeSingle(),
+        supabase.from('daily_words').select('id, local_date, word, emoji, color, word_style, created_at').eq('user_id', activeUser.id).eq('local_date', localDayKey()).maybeSingle(),
         supabase.rpc('my_word_history', { p_limit: 14 }),
       ]);
       if (profileResult.error) throw profileResult.error;
@@ -484,11 +488,13 @@ export default function CozyPreview() {
         setSubmittedState(wordResult.data.word);
         setSubmittedEmoji(wordResult.data.emoji);
         setSubmittedColor(wordResult.data.color as WordColor);
+        setSubmittedWordStyle((wordResult.data.word_style as WordStyle) || 'bold');
         setSubmittedAt(wordResult.data.created_at);
       } else {
         setSubmittedState('');
         setSubmittedEmoji(null);
         setSubmittedColor('mint');
+        setSubmittedWordStyle('bold');
         setSubmittedAt(null);
       }
     } finally {
@@ -591,7 +597,7 @@ export default function CozyPreview() {
     const savedEchoes = window.localStorage.getItem(`wurd:echoes:${dayKey}`);
     setSubmittedState(word);
     setSubmittedAt(window.localStorage.getItem(`wurd:posted-at:${dayKey}`));
-    if (savedPost) { try { const post = JSON.parse(savedPost) as PostWordInput; setSubmittedEmoji(post.emoji); setSubmittedColor(post.color); } catch { /* supports older local saves */ } }
+    if (savedPost) { try { const post = JSON.parse(savedPost) as PostWordInput; setSubmittedEmoji(post.emoji); setSubmittedColor(post.color); setSubmittedWordStyle(post.wordStyle || 'bold'); } catch { /* supports older local saves */ } }
     try { setEchoed(savedEchoes ? JSON.parse(savedEchoes) : []); } catch { setEchoed([]); }
     if (!word) setTab('today');
     const timer = window.setInterval(() => {
@@ -603,12 +609,13 @@ export default function CozyPreview() {
 
   async function postWord(post: PostWordInput) {
     if (supabase && user) {
-      const result = await supabase.rpc('post_daily_word', { p_word: post.word, p_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, p_emoji: post.emoji, p_color: post.color, p_city: profile?.city || null, p_country_code: profile?.country_code || null });
+      const result = await supabase.rpc('post_daily_word', { p_word: post.word, p_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, p_emoji: post.emoji, p_color: post.color, p_city: profile?.city || null, p_country_code: profile?.country_code || null, p_word_style: post.wordStyle });
       if (result.error) throw result.error;
       setSubmittedState(post.word);
       setSubmittedAt(new Date().toISOString());
       setSubmittedEmoji(post.emoji);
       setSubmittedColor(post.color);
+      setSubmittedWordStyle(post.wordStyle);
       await loadAccount(user);
       return;
     }
@@ -617,6 +624,7 @@ export default function CozyPreview() {
     setSubmittedAt(postedAt);
     setSubmittedEmoji(post.emoji);
     setSubmittedColor(post.color);
+    setSubmittedWordStyle(post.wordStyle);
     window.localStorage.setItem(`wurd:daily:${dayKey}`, post.word);
     window.localStorage.setItem(`wurd:post:${dayKey}`, JSON.stringify(post));
     window.localStorage.setItem(`wurd:posted-at:${dayKey}`, postedAt);
@@ -728,7 +736,7 @@ export default function CozyPreview() {
   const streak = profile?.streak_days ?? 12;
   const ownEchoes = history.find(item => item.local_date === dayKey)?.echo_count ?? (submitted ? 37 + submitted.length * 11 : 0);
   return (
-    <main className={`cozy-stage fixed-app active-${tab} ${submitted || tab === 'you' ? 'today-app' : ''}`}><section className="cozy-shell"><BrandHeader tab={tab} submitted={submitted} submittedAt={submittedAt} now={clockNow} emoji={submittedEmoji} color={submittedColor} echoes={ownEchoes} xp={xp} level={level} streak={streak} username={profile?.username} memberSince={profile?.created_at} city={profile?.city} countryCode={profile?.country_code} /><div className="cozy-main">
+    <main className={`cozy-stage fixed-app active-${tab} ${submitted || tab === 'you' ? 'today-app' : ''}`}><section className="cozy-shell"><BrandHeader tab={tab} submitted={submitted} submittedAt={submittedAt} now={clockNow} emoji={submittedEmoji} color={submittedColor} wordStyle={submittedWordStyle} echoes={ownEchoes} xp={xp} level={level} streak={streak} username={profile?.username} memberSince={profile?.created_at} city={profile?.city} countryCode={profile?.country_code} /><div className="cozy-main">
       {appError && <button className="app-error" onClick={() => setAppError('')}>{appError}</button>}
       {tab === 'today' && <TodayTab submitted={submitted} level={level} feed={feed.filter(item => isWithinTodayWindow(item.created_at, clockNow))} feedLoading={feedLoading} spokeCount={spokeCount} feedMode={feedMode} setFeedMode={setFeedMode} setSubmitted={postWord} echoed={echoed} toggleEcho={toggleEcho} />}
       {tab === 'world' && <WorldTab />}

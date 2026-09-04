@@ -296,11 +296,15 @@ button { cursor: pointer; }
 .today-app-header { min-height: clamp(158px, 23svh, 214px); flex: 0 0 clamp(158px, 23svh, 214px); display: grid; grid-template-rows: auto 1fr auto; padding: 18px 22px 14px; border-bottom: 1px solid #e6f0ec; background: #fff; }
 .today-brand-row, .today-meta-row { display: flex; align-items: center; justify-content: space-between; }
 .today-brand { color: #00b979; font-size: 29px; line-height: 1; font-weight: 900; letter-spacing: -.07em; }
+.header-progress { display: flex; align-items: center; gap: 7px; }
+.level-label { color: #61766d; font-size: 8px; font-weight: 800; letter-spacing: .06em; white-space: nowrap; }
+.level-label b { color: #12372b; font-size: 14px; letter-spacing: 0; }
 .header-xp { display: flex; align-items: center; gap: 6px; padding: 9px 13px; border: 1px solid #c5eedf; border-radius: 999px; background: #effff9; color: #008e5c; font: inherit; cursor: pointer; }
 .header-xp svg { width: 13px; height: 13px; }
 .header-xp strong { font-size: 10px; }
 .header-xp small { color: #6c8179; font-size: 7px; font-weight: 800; letter-spacing: .08em; }
 .today-word { align-self: center; justify-self: center; max-width: 92%; padding: 0; border: 0; background: transparent; color: #00b979; font-family: inherit; font-size: clamp(36px, 8vw, 58px); line-height: .86; font-weight: 900; letter-spacing: -.075em; text-align: center; overflow-wrap: anywhere; cursor: pointer; }
+.word-style-serif { font-family: Georgia, 'Times New Roman', serif !important; font-weight: 700 !important; letter-spacing: -.045em !important; }
 .header-xp:focus-visible, .today-word:focus-visible { outline: 2px solid #00b979; outline-offset: 3px; }
 .today-meta-row p { margin: 0; font-family: Georgia, 'Times New Roman', serif; font-size: 17px; }
 .today-meta-row .echo-count { display: flex; align-items: center; gap: 8px; color: #647970; font-size: 16px; font-weight: 750; }
@@ -723,7 +727,7 @@ html, body, #root { height: 100%; overflow: hidden; overscroll-behavior: none; }
 .diary-day-card > .day-date strong { font: 700 32px Georgia, 'Times New Roman', serif; }
 .diary-day-card > b {
   grid-column: 2;
-  grid-row: 1 / 4;
+  grid-row: 1 / 3;
   align-self: center;
   margin: 0;
   font-size: clamp(17px, 5.2vw, 25px);
@@ -731,6 +735,8 @@ html, body, #root { height: 100%; overflow: hidden; overscroll-behavior: none; }
   overflow-wrap: anywhere;
   word-break: break-word;
 }
+.diary-location { grid-column: 2; grid-row: 3; align-self: end; display: flex; align-items: center; gap: 3px; min-width: 0; color: #61766d; font-size: 10px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.diary-location svg { width: 11px; height: 11px; flex: 0 0 11px; color: #00b979; }
 .diary-day-card > .echo-count { position: static; grid-column: 3; grid-row: 3; align-self: end; font-size: 12px; }
 .diary-day-card > .echo-count svg { width: 15px; height: 15px; }
 .diary-day-card > em { position: static; grid-column: 3; grid-row: 1; justify-self: end; font-size: 7px; }
@@ -816,6 +822,9 @@ html, body, #root { height: 100%; overflow: hidden; overscroll-behavior: none; }
 .emoji-options button { width: 31px; height: 31px; padding: 0; border: 1px solid #dce8e3; border-radius: 9px; background: white !important; color: #26342e !important; font-size: 15px !important; }
 .emoji-options button:first-child { width: 42px; font-size: 7px !important; font-weight: 750; }
 .emoji-options button.active { border-color: #00c982; box-shadow: 0 0 0 2px #cffff0; }
+.style-options { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.style-options button { height: 31px; padding: 0 8px; border: 1px solid #dce8e3; border-radius: 9px; background: white !important; color: #26342e !important; font-size: 10px !important; font-weight: 800; }
+.style-options button.active { border-color: #00c982; box-shadow: 0 0 0 2px #cffff0; }
 .color-options { display: flex; justify-content: center; gap: 11px; }
 .color-options button { width: 25px; height: 25px; padding: 0; border: 4px solid white; border-radius: 50%; box-shadow: 0 0 0 1px #cbded6; }
 .color-options button.active { box-shadow: 0 0 0 2px #174d3b; }

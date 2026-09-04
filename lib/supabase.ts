@@ -35,6 +35,7 @@ export const supabase = isSupabaseConfigured
   : null;
 
 export type WordColor = 'mint' | 'blue' | 'coral';
+export type WordStyle = 'bold' | 'serif';
 
 export type WurdProfile = {
   id: string;
@@ -46,7 +47,7 @@ export type WurdProfile = {
   country_code: string | null;
   timezone: string;
   xp: number;
-  level: 1 | 2 | 3;
+  level: 1 | 2 | 3 | 4;
   streak_days: number;
   longest_streak: number;
   last_word_date: string | null;
@@ -63,6 +64,7 @@ export type FeedWord = {
   word: string;
   emoji: string | null;
   color: WordColor;
+  word_style: WordStyle;
   local_date: string;
   created_at: string;
   echo_count: number;
