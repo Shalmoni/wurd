@@ -127,6 +127,12 @@ function levelProgressFor(xp: number, level: number) {
   return Math.min(100, Math.max(0, ((xp - floor) / (ceiling - floor)) * 100));
 }
 
+function readableError(reason: unknown, fallback: string) {
+  if (reason instanceof Error) return reason.message;
+  if (reason && typeof reason === 'object' && 'message' in reason && typeof reason.message === 'string') return reason.message;
+  return fallback;
+}
+
 function BrandHeader({ submitted, emoji, color, echoes, xp, level, streak }: { submitted: string; emoji: string | null; color: WordColor; echoes: number; xp: number; level: number; streak: number }) {
   const levelProgress = levelProgressFor(xp, level);
   const multiplier = multiplierForStreak(streak);
@@ -405,29 +411,33 @@ export default function CozyPreview() {
   async function loadAccount(activeUser: User) {
     if (!supabase) return;
     setFeedLoading(true);
-    const [profileResult, wordResult, historyResult] = await Promise.all([
-      supabase.from('profiles').select('*').eq('id', activeUser.id).single(),
-      supabase.from('daily_words').select('id, local_date, word, emoji, color').eq('user_id', activeUser.id).eq('local_date', localDayKey()).maybeSingle(),
-      supabase.rpc('my_word_history', { p_limit: 14 }),
-    ]);
-    if (profileResult.error) throw profileResult.error;
-    if (historyResult.error) throw historyResult.error;
-    const loadedProfile = profileResult.data as WurdProfile;
-    setProfile(loadedProfile);
-    setUsernameDraft(loadedProfile.username.startsWith('wurd_') ? '' : loadedProfile.username);
-    setCityDraft(loadedProfile.city || '');
-    setCitySelection(loadedProfile.city ? { name: loadedProfile.city, country: '', countryCode: loadedProfile.country_code || '' } : null);
-    setHistory(((historyResult.data || []) as DiaryWord[]).filter(item => item.local_date >= diaryLaunchDate));
-    if (wordResult.data) {
-      setSubmittedState(wordResult.data.word);
-      setSubmittedEmoji(wordResult.data.emoji);
-      setSubmittedColor(wordResult.data.color as WordColor);
-    } else {
-      setSubmittedState('');
-      setSubmittedEmoji(null);
-      setSubmittedColor('mint');
+    try {
+      const [profileResult, wordResult, historyResult] = await Promise.all([
+        supabase.from('profiles').select('*').eq('id', activeUser.id).single(),
+        supabase.from('daily_words').select('id, local_date, word, emoji, color').eq('user_id', activeUser.id).eq('local_date', localDayKey()).maybeSingle(),
+        supabase.rpc('my_word_history', { p_limit: 14 }),
+      ]);
+      if (profileResult.error) throw profileResult.error;
+      if (wordResult.error) throw wordResult.error;
+      if (historyResult.error) throw historyResult.error;
+      const loadedProfile = profileResult.data as WurdProfile;
+      setProfile(loadedProfile);
+      setUsernameDraft(loadedProfile.username.startsWith('wurd_') ? '' : loadedProfile.username);
+      setCityDraft(loadedProfile.city || '');
+      setCitySelection(loadedProfile.city ? { name: loadedProfile.city, country: '', countryCode: loadedProfile.country_code || '' } : null);
+      setHistory(((historyResult.data || []) as DiaryWord[]).filter(item => item.local_date >= diaryLaunchDate));
+      if (wordResult.data) {
+        setSubmittedState(wordResult.data.word);
+        setSubmittedEmoji(wordResult.data.emoji);
+        setSubmittedColor(wordResult.data.color as WordColor);
+      } else {
+        setSubmittedState('');
+        setSubmittedEmoji(null);
+        setSubmittedColor('mint');
+      }
+    } finally {
+      setFeedLoading(false);
     }
-    setFeedLoading(false);
   }
 
   async function loadFeed(mode = feedMode, activeUser = user) {
@@ -465,13 +475,19 @@ export default function CozyPreview() {
       if (!live) return;
       if (error && error.name !== 'AuthSessionMissingError') setAppError(error.message);
       setUser(data.user);
-      try { if (data.user) await Promise.all([loadAccount(data.user), loadConnections(data.user)]); } catch (reason) { setAppError(reason instanceof Error ? reason.message : 'Could not load your account.'); }
+      if (data.user) {
+        try { await loadAccount(data.user); } catch (reason) { setAppError(readableError(reason, 'Could not load your account.')); }
+        void loadConnections(data.user).catch(reason => console.error('Could not load friendships', reason));
+      }
       if (live) setAuthLoading(false);
     });
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!live) return;
       setUser(session?.user || null);
-      if (session?.user) void Promise.all([loadAccount(session.user), loadConnections(session.user)]).catch(reason => setAppError(reason instanceof Error ? reason.message : 'Could not load your account.'));
+      if (session?.user) {
+        void loadAccount(session.user).catch(reason => setAppError(readableError(reason, 'Could not load your account.')));
+        void loadConnections(session.user).catch(reason => console.error('Could not load friendships', reason));
+      }
       else { setProfile(null); setSubmittedState(''); setFeed([]); setHistory([]); setConnections([]); }
     });
     return () => { live = false; listener.subscription.unsubscribe(); };
@@ -479,7 +495,7 @@ export default function CozyPreview() {
 
   useEffect(() => {
     if (!user || !submitted) return;
-    void loadFeed(feedMode, user).catch(reason => setAppError(reason instanceof Error ? reason.message : 'Could not load today’s words.'));
+    void loadFeed(feedMode, user).catch(reason => setAppError(readableError(reason, 'Could not load today’s words.')));
   }, [user, submitted, feedMode]);
 
   useEffect(() => {
@@ -625,7 +641,7 @@ export default function CozyPreview() {
       {appError && <button className="app-error" onClick={() => setAppError('')}>{appError}</button>}
       {tab === 'today' && <TodayTab submitted={submitted} level={level} feed={feed} feedLoading={feedLoading} spokeCount={spokeCount} feedMode={feedMode} setFeedMode={setFeedMode} setSubmitted={postWord} echoed={echoed} toggleEcho={toggleEcho} />}
       {tab === 'world' && <WorldTab />}
-      {tab === 'you' && <YouTab history={history} onOpenPanel={panel => { setAppError(''); setSearchResults([]); setYouPanel(panel); if (panel === 'friends') void loadConnections(user || undefined); }} />}
+      {tab === 'you' && <YouTab history={history} onOpenPanel={panel => { setAppError(''); setSearchResults([]); setYouPanel(panel); if (panel === 'friends') void loadConnections(user || undefined).catch(reason => setAppError(readableError(reason, 'Could not load friends.'))); }} />}
     </div><nav className="cozy-nav" aria-label="App navigation">{tabs.map(item => {
       const locked = item.id === 'world';
       return <button key={item.id} className={`${tab === item.id ? 'active' : ''} ${locked ? 'locked' : ''}`} disabled={locked} title={locked ? 'Coming later' : item.label} onClick={() => setTab(item.id)}><item.icon />{locked && <Lock className="nav-lock" />}<span>{item.label}</span></button>;
