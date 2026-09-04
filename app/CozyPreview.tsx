@@ -200,7 +200,7 @@ function EchoStat({ count }: { count: number }) {
 function wordLengthClass(word: string) {
   const length = Array.from(word).length;
   if (length >= 17) return 'word-fit-xlong';
-  if (length >= 13) return 'word-fit-long';
+  if (length >= 12) return 'word-fit-long';
   if (length >= 9) return 'word-fit-medium';
   return 'word-fit-short';
 }

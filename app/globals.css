@@ -1200,11 +1200,15 @@ html, body, #root { height: 100%; overflow: hidden; overscroll-behavior: none; }
 
 /* Today-card wurds always stay on one line and scale with character count. */
 .today-app .live-word {
-  max-width: 100%;
+  width: calc(100% - 52px);
+  max-width: calc(100% - 52px);
+  margin-right: 0;
+  overflow: hidden;
   overflow-wrap: normal;
+  text-overflow: clip;
   word-break: normal;
   white-space: nowrap;
 }
 .today-app .live-word.word-fit-medium { font-size: clamp(13px, 2.65svh, 21px); }
-.today-app .live-word.word-fit-long { font-size: clamp(10px, 2.15svh, 17px); }
-.today-app .live-word.word-fit-xlong { margin-right: 24px; font-size: clamp(8px, 1.85svh, 14px); letter-spacing: -.075em; }
+.today-app .live-word.word-fit-long { font-size: clamp(10px, 1.9svh, 15px); }
+.today-app .live-word.word-fit-xlong { font-size: clamp(8px, 1.65svh, 13px); letter-spacing: -.075em; }
