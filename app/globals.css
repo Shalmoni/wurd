@@ -985,3 +985,51 @@ html, body, #root { height: 100%; overflow: hidden; overscroll-behavior: none; }
   .diary-empty { padding: 14px; }
   .diary-empty h2 { margin-top: 10px; font-size: 21px; }
 }
+
+/* Readable at arm's length on a phone. Keep the progress track compact so
+   the score, multiplier and streak can carry the visual weight. */
+.header-xp > .xp-label { font-size: 10px; }
+.header-xp > strong { font-size: 14px; }
+.header-xp > em { font-size: 11px; }
+.header-xp > .xp-bar {
+  min-width: 24px;
+  max-width: 30px;
+  flex: 1 1 28px;
+  height: 7px;
+}
+.header-xp > .xp-streak { font-size: 11px; }
+.header-xp > .xp-streak svg { width: 13px; height: 13px; }
+
+.today-meta-row span { font-size: 18px; }
+.today-meta-row svg { width: 19px; height: 19px; }
+.today-toolbar { min-height: 44px; flex-basis: 44px; }
+.today-toolbar > span { font-size: 20px; }
+.today-toolbar > span i { width: 9px; height: 9px; }
+.today-toolbar .today-mode {
+  width: 150px;
+  min-height: 40px;
+  height: 40px;
+  padding: 3px;
+}
+.today-toolbar .today-mode button { font-size: 12px; }
+.today-app .echo-count { font-size: clamp(11px, 1.6svh, 13px); font-weight: 800; }
+.today-app .echo-count svg { width: 15px; height: 15px; }
+
+.diary-day-card > span { font-size: 13px; }
+.diary-day-card > .day-date i { margin-bottom: 3px; font-size: 14px; }
+.diary-day-card > small { gap: 6px; font-size: 15px; font-weight: 800; }
+.diary-day-card > small svg { width: 18px; height: 18px; }
+.fixed-app.active-you .calendar-swipe-cue {
+  flex-basis: 28px;
+  font-size: 11px;
+  letter-spacing: .07em;
+}
+
+@media (max-width: 360px), (max-height: 650px) {
+  .today-toolbar > span { font-size: 17px; }
+  .today-toolbar .today-mode { width: 136px; }
+  .diary-day-card > span { font-size: 11px; }
+  .diary-day-card > .day-date i { font-size: 12px; }
+  .diary-day-card > small { font-size: 13px; }
+  .fixed-app.active-you .calendar-swipe-cue { flex-basis: 24px; font-size: 9px; }
+}
