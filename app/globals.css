@@ -1032,6 +1032,52 @@ html, body, #root { height: 100%; overflow: hidden; overscroll-behavior: none; }
 .header-xp > .xp-bar { align-self: center; }
 .header-xp > .xp-streak svg { display: block; }
 
+/* Three anchored groups: XP at the left edge, multiplier + progress together
+   in the middle, and the streak at the right edge. */
+.header-xp {
+  width: min(176px, calc(100vw - 116px));
+  justify-content: space-between;
+  column-gap: 4px;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+.header-xp > .xp-total { gap: 2px; }
+.header-xp > .xp-progress {
+  min-width: 0;
+  display: inline-flex;
+  grid-template-columns: none;
+  align-items: center;
+  gap: 3px;
+  flex: 0 0 auto;
+}
+.header-xp > .xp-progress > em {
+  display: inline-flex;
+  align-items: center;
+  margin: 0;
+  color: #00a86d;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 850;
+  line-height: 1;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.header-xp > .xp-progress > .xp-bar {
+  width: 28px;
+  height: 7px;
+  display: block;
+  margin: 0;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #ccecdf;
+}
+.header-xp > .xp-progress > .xp-bar > b {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #00b979, #00e695);
+}
+
 .today-meta-row span { font-size: 18px; }
 .today-meta-row svg { width: 19px; height: 19px; }
 .today-meta-row p {

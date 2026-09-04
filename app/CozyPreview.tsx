@@ -158,7 +158,7 @@ function locationLabel(city?: string | null, countryCode?: string | null) {
 function BrandHeader({ tab, submitted, submittedAt, now, emoji, color, echoes, xp, level, streak, username, memberSince, city, countryCode }: { tab: Tab; submitted: string; submittedAt?: string | null; now: number; emoji: string | null; color: WordColor; echoes: number; xp: number; level: number; streak: number; username?: string; memberSince?: string | null; city?: string | null; countryCode?: string | null }) {
   const levelProgress = levelProgressFor(xp, level);
   const multiplier = multiplierForStreak(streak);
-  const topRow = <div className="today-brand-row"><div className="today-brand">wurd</div><div className="header-xp"><strong className="xp-total"><span className="xp-prefix">XP</span>{xp}</strong><em>{multiplier.toFixed(1)}×</em><i className="xp-bar"><b style={{ width: `${levelProgress}%` }} /></i><span className="xp-streak"><Flame />{streak}</span></div></div>;
+  const topRow = <div className="today-brand-row"><div className="today-brand">wurd</div><div className="header-xp"><strong className="xp-total"><span className="xp-prefix">XP</span>{xp}</strong><span className="xp-progress"><em>{multiplier.toFixed(1)}×</em><i className="xp-bar"><b style={{ width: `${levelProgress}%` }} /></i></span><span className="xp-streak"><Flame />{streak}</span></div></div>;
   if (tab === 'you') return (
     <header className="today-app-header you-identity-header">
       {topRow}
@@ -503,9 +503,15 @@ export default function CozyPreview() {
 
   useEffect(() => {
     if (!supabase) return;
+    const authClient = supabase;
     let live = true;
-    void supabase.auth.getUser().then(async ({ data, error }) => {
+    void authClient.auth.getUser().then(async ({ data, error }) => {
       if (!live) return;
+      if (error?.message.includes('User from sub claim in JWT does not exist')) {
+        await authClient.auth.signOut({ scope: 'local' });
+        if (live) { setUser(null); setAppError(''); setAuthLoading(false); }
+        return;
+      }
       if (error && error.name !== 'AuthSessionMissingError') setAppError(error.message);
       setUser(data.user);
       if (data.user) {
@@ -514,7 +520,7 @@ export default function CozyPreview() {
       }
       if (live) setAuthLoading(false);
     });
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: listener } = authClient.auth.onAuthStateChange((_event, session) => {
       if (!live) return;
       setUser(session?.user || null);
       if (session?.user) {
