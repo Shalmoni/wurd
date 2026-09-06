@@ -695,10 +695,11 @@ function YouToolsDialog(props: YouToolsDialogProps) {
         </>}
         {props.panel === 'xp' && <>
           <DialogHeader><DialogTitle>Your XP</DialogTitle><DialogDescription>Every Wurd, friendship, and echo received moves you forward.</DialogDescription></DialogHeader>
-          <section className="xp-summary-card"><div><span>LEVEL</span><strong>{props.level}</strong><small><Flame /> {props.streak} day streak</small></div><div className="xp-summary-progress"><strong>{props.level >= 10 ? `${xpProgress.earned} XP` : `${xpProgress.earned} / ${xpProgress.required} XP`}</strong><i><b style={{ width: `${xpProgress.percent}%` }} /></i><small>{nextLevel ? `${xpProgress.remaining} XP to Level ${nextLevel.level}` : 'Highest level reached'}</small></div>{nextLevel && <p><span>NEXT UNLOCK</span><strong>{nextLevel.reward}</strong></p>}</section>
-          <div className="xp-ladder" ref={ladder} aria-label="Level progression">{levelDefinitions.filter(item => item.level <= props.level + 1).reverse().map(item => {
+          <section className="xp-summary-card"><div><span>LEVEL</span><strong>{props.level}</strong><small><Flame /> {props.streak} day streak</small></div><div className="xp-summary-progress"><strong>{props.level >= 10 ? `${xpProgress.earned} XP` : `${xpProgress.earned} / ${xpProgress.required} XP`}</strong><i><b style={{ width: `${xpProgress.percent}%` }} /></i><small>{nextLevel ? `${xpProgress.remaining} XP to Level ${nextLevel.level}` : 'Highest level reached'}</small></div>{nextLevel && <p><span>NEXT UNLOCK</span><strong>???</strong></p>}</section>
+          <div className="xp-ladder" ref={ladder} aria-label="Level progression"><div className="xp-ladder-more" aria-label="More levels coming"><i /><span>•••</span></div>{[...levelDefinitions].reverse().map(item => {
             const state = item.level < props.level ? 'completed' : item.level === props.level ? 'current' : 'upcoming';
-            return <article className={`xp-level-row ${state}`} key={item.level}><span className="xp-level-node">{state === 'completed' ? <Check /> : state === 'current' ? item.level : <Lock />}</span><div><strong>Level {item.level}</strong><small>{item.reward}</small></div><b>{item.threshold.toLocaleString()} XP</b></article>;
+            const reward = item.level <= props.level ? item.reward : '???';
+            return <article className={`xp-level-row ${state}`} key={item.level}><span className="xp-level-node">{state === 'completed' ? <Check /> : state === 'current' ? item.level : <Lock />}</span><div><strong>Level {item.level}</strong><small>{reward}</small></div><b>{item.threshold.toLocaleString()} XP</b></article>;
           })}</div>
         </>}
         {props.panel === 'settings' && <>
