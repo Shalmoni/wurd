@@ -5,7 +5,7 @@ import type { CSSProperties, PointerEvent as ReactPointerEvent, SyntheticEvent }
 import type { User } from '@supabase/supabase-js';
 import {
   Check, CircleUserRound, Clock3, Flame, Globe2, Lock, LogOut,
-  MapPin, RefreshCw, Search, Settings, Sun, UserPlus, UsersRound, Waves,
+  MapPin, RefreshCw, Search, Settings, Sun, UserPlus, UsersRound,
   Trophy,
 } from 'lucide-react';
 import { geoMercator, geoNaturalEarth1, geoPath } from 'd3-geo';
@@ -297,9 +297,14 @@ function BrandHeader({ tab, submitted, submittedAt, now, emoji, color, wordStyle
   return <header className="cozy-header"><div className="cozy-logo">wurd</div></header>;
 }
 
-function EchoStat({ count, color, onActivate }: { count: number; color?: string; onActivate?: () => void }) {
-  const contents = <><Waves /><span className="echo-total">{count}</span></>;
-  if (onActivate) return <button type="button" className="echo-count" style={{ '--echo-color': color } as CSSProperties} aria-label={`${count} total echoes. Choose your echo strength.`} onClick={event => { event.stopPropagation(); onActivate(); }}>{contents}</button>;
+function EchoWaves({ strength = 0 }: { strength?: number }) {
+  const normalizedStrength = Math.max(0, Math.min(3, Math.round(strength)));
+  return <svg className="echo-waves" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path className={normalizedStrength >= 3 ? 'echo-wave-personal' : ''} d="M2 5q2.5 2 5 0t5 0 5 0 5 0" /><path className={normalizedStrength >= 2 ? 'echo-wave-personal' : ''} d="M2 12q2.5 2 5 0t5 0 5 0 5 0" /><path className={normalizedStrength >= 1 ? 'echo-wave-personal' : ''} d="M2 19q2.5 2 5 0t5 0 5 0 5 0" /></svg>;
+}
+
+function EchoStat({ count, color, onActivate, strength = 0 }: { count: number; color?: string; onActivate?: () => void; strength?: number }) {
+  const contents = <><EchoWaves strength={strength} /><span className="echo-total">{count}</span></>;
+  if (onActivate) return <button type="button" className="echo-count" style={{ '--echo-color': color } as CSSProperties} aria-label={`${count} total echoes. Your echo strength is ${strength} of 3. Choose your echo strength.`} onClick={event => { event.stopPropagation(); onActivate(); }}>{contents}</button>;
   return (
     <Popover>
       <PopoverTrigger className="echo-count" style={{ '--echo-color': color } as CSSProperties} aria-label={`${count} echoes. Echoes show how many people feel the same way.`} onClick={event => event.stopPropagation()}>
@@ -393,7 +398,7 @@ function FeedCard({ item, ownWord, now, friendState, previewStrength, pickerOpen
   }, [pickerOpen]);
   const toggleEchoPicker = () => onPickerChange(!pickerOpen);
   if (match) return <article className="live-card friend-square exact-match" style={cardStyle} aria-label={`${name} chose the same word as you`}>{friendControl}<div className="card-static-content">{content}</div><EchoStat count={item.echo_count} color={wordColorValues[item.color]} /></article>;
-  return <article data-echo-card={String(item.id)} className={`live-card friend-square ${activeStrength > 0 ? 'echoed' : ''} ${pickerOpen ? 'echo-picker-open' : ''}`} style={cardStyle}>{friendControl}<button type="button" className="card-echo-action" aria-pressed={activeStrength > 0} aria-expanded={pickerOpen} aria-label={`${name} chose ${item.word}. Choose your echo strength.`} onClick={toggleEchoPicker}>{content}</button>{pickerOpen && <div className="echo-strength-inline" style={{ '--word-color': wordColorValues[item.color], '--echo-strength-color': strengthOption.color } as CSSProperties} onClick={toggleEchoPicker}><div className="echo-strength-title"><span>How loud?</span><b>{strengthOption.label}</b></div><div className="echo-strength-control" onClick={event => event.stopPropagation()}><span className="echo-strength-dots" aria-hidden="true"><i /><i /><i /><i /></span><Slider min={0} max={3} step={1} value={[draftStrength]} disabled={echoBusy} onValueChange={value => { const next = Array.isArray(value) ? value[0] : value; draftStrengthRef.current = next; setDraftStrength(next); }} aria-label="Echo strength: Meh, Okay, or Wurd" /></div></div>}<EchoStat count={displayedEchoes} color={wordColorValues[item.color]} onActivate={toggleEchoPicker} /></article>;
+  return <article data-echo-card={String(item.id)} className={`live-card friend-square ${activeStrength > 0 ? 'echoed' : ''} ${pickerOpen ? 'echo-picker-open' : ''}`} style={cardStyle}>{friendControl}<button type="button" className="card-echo-action" aria-pressed={activeStrength > 0} aria-expanded={pickerOpen} aria-label={`${name} chose ${item.word}. Choose your echo strength.`} onClick={toggleEchoPicker}>{content}</button>{pickerOpen && <div className="echo-strength-inline" style={{ '--word-color': wordColorValues[item.color], '--echo-strength-color': strengthOption.color } as CSSProperties} onClick={toggleEchoPicker}><div className="echo-strength-title"><span>How loud?</span><b>{strengthOption.label}</b></div><div className="echo-strength-control" onClick={event => event.stopPropagation()}><span className="echo-strength-dots" aria-hidden="true"><i /><i /><i /><i /></span><Slider min={0} max={3} step={1} value={[draftStrength]} disabled={echoBusy} onValueChange={value => { const next = Array.isArray(value) ? value[0] : value; draftStrengthRef.current = next; setDraftStrength(next); }} aria-label="Echo strength: Meh, Okay, or Wurd" /></div></div>}<EchoStat count={displayedEchoes} color={wordColorValues[item.color]} strength={activeStrength} onActivate={toggleEchoPicker} /></article>;
 }
 
 type TodayTabProps = {
