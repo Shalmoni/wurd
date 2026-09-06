@@ -1029,7 +1029,16 @@ export default function CozyPreview() {
         ? await supabase.rpc('un_echo_word', { p_daily_word_id: id })
         : await supabase.rpc('set_echo_strength', { p_daily_word_id: id, p_strength: normalizedStrength });
       if (result.error) { setAppError(result.error.message); return; }
-      await Promise.all([loadFeed(feedMode, user), loadAccount(user)]);
+      setFeed(current => current.map(item => {
+        if (item.id !== id) return item;
+        const previousStrength = item.my_echo_strength ?? (item.echoed_by_me ? 2 : 0);
+        return {
+          ...item,
+          echo_count: Math.max(0, item.echo_count - previousStrength + normalizedStrength),
+          echoed_by_me: normalizedStrength > 0,
+          my_echo_strength: normalizedStrength,
+        };
+      }));
     }
   }
 
