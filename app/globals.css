@@ -308,13 +308,13 @@ button { cursor: pointer; }
 .header-xp small { color: #6c8179; font-size: 7px; font-weight: 800; letter-spacing: .08em; }
 .today-word { align-self: center; justify-self: center; width: 100%; max-width: 100%; overflow: hidden; padding: 0; border: 0; background: transparent; color: #00b979; font-family: inherit; font-size: clamp(36px, 8vw, 58px); line-height: .92; font-weight: 900; letter-spacing: -.075em; text-align: center; overflow-wrap: normal; white-space: nowrap; cursor: pointer; }
 .today-word-text { display: inline-block; min-width: max-content; padding: .05em .04em .1em; transform: scale(var(--word-scale, 1)); transform-origin: center; }
-.today-word-row { align-self: center; justify-self: center; position: relative; display: flex; align-items: center; justify-content: center; width: 92%; max-width: 92%; }
+.today-word-row { align-self: center; justify-self: center; position: relative; display: flex; align-items: center; justify-content: center; gap: 7px; width: 92%; max-width: 92%; }
 .today-word.word-fit-medium { font-size: clamp(31px, 7vw, 50px); }
 .today-word.word-fit-long { font-size: clamp(23px, 5.5vw, 39px); }
 .today-word.word-fit-xlong { font-size: clamp(19px, 4.6vw, 33px); }
-.today-word-row:has(.replace-word-icon) { max-width: calc(92% - 31px); }
-.today-word-row .today-word { max-width: 100%; }
-.replace-word-icon { position: absolute; left: calc(100% + 7px); top: 50%; width: 24px; height: 24px; display: grid; place-items: center; padding: 0; transform: translateY(-50%); border: 1px solid #bcebdc; border-radius: 50%; background: #effff9; color: #00a86d; cursor: pointer; }
+.today-word-row .today-word { width: fit-content; max-width: 100%; min-width: 0; flex: 0 1 auto; }
+.today-word-row:has(.replace-word-icon) .today-word { max-width: calc(100% - 31px); }
+.replace-word-icon { position: static; flex: 0 0 24px; width: 24px; height: 24px; display: grid; place-items: center; padding: 0; border: 1px solid #bcebdc; border-radius: 50%; background: #effff9; color: #00a86d; cursor: pointer; }
 .replace-word-icon svg { width: 12px; height: 12px; }
 .replace-word-icon:hover { border-color: #00c982; background: #e2fff4; }
 .word-style-serif { font-family: Georgia, 'Times New Roman', serif !important; font-weight: 700 !important; letter-spacing: -.045em !important; }
