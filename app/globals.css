@@ -1054,6 +1054,11 @@ html, body, #root { height: 100%; overflow: hidden; overscroll-behavior: none; }
 .person-row small svg { width: 11px; height: 11px; color: #00a86d; }
 .status-chip { display: inline-flex; align-items: center; gap: 4px; flex: 0 0 auto; padding: 6px 9px; border-radius: 999px; background: #e9fff6; color: #008e5c; font-size: 8px; font-weight: 800; }
 .status-chip svg { width: 11px; height: 11px; }
+.person-row .friend-status-button { border: 0; background: #e9fff6; color: #008e5c; }
+.person-row > .unfriend-actions { min-width: auto; flex: 0 0 auto; display: flex; align-items: center; gap: 5px; }
+.person-row .unfriend-actions button { min-height: 28px; padding: 6px 9px; border: 0; font-size: 8px; }
+.person-row .unfriend-actions .unfriend-cancel { background: #e9fff6; color: #008e5c; }
+.person-row .unfriend-actions .unfriend-button { background: #fff0f1; color: #c52b3a; }
 .person-row > .request-response-actions { min-width: auto; flex: 0 0 auto; display: flex; align-items: center; gap: 6px; }
 .request-response-actions button:first-child { border: 1px solid #d9e8e2; background: #fff; color: #61766d; }
 .xp-summary-card { display: grid; grid-template-columns: 78px minmax(0, 1fr); gap: 13px; padding: 15px; border: 1px solid #c9eee0; border-radius: 20px; background: linear-gradient(145deg, #effff9, #fbfffd); }

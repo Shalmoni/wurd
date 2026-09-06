@@ -553,6 +553,7 @@ type YouToolsDialogProps = {
   sendFriendRequest: (id: string) => Promise<boolean>;
   acceptFriend: (id: number) => Promise<void>;
   declineFriend: (id: number) => Promise<void>;
+  unfriend: (id: number) => Promise<boolean>;
   xp: number;
   level: number;
   streak: number;
@@ -579,6 +580,7 @@ function YouToolsDialog(props: YouToolsDialogProps) {
   const [photoOffset, setPhotoOffset] = useState({ x: 0, y: 0 });
   const [photoBusy, setPhotoBusy] = useState(false);
   const [photoError, setPhotoError] = useState('');
+  const [confirmUnfriendId, setConfirmUnfriendId] = useState<number | null>(null);
 
   useEffect(() => () => {
     if (photoCrop) URL.revokeObjectURL(photoCrop.src);
@@ -689,7 +691,7 @@ function YouToolsDialog(props: YouToolsDialogProps) {
           <div className="people-list friendship-list">
             {incoming.map(item => <div className="person-row" key={item.id}><div><strong>{usernameLabel(item.other.username)}</strong><small>Wants to be friends</small></div><div className="request-response-actions"><Button size="sm" variant="outline" onClick={() => void props.declineFriend(item.id)} disabled={props.busy}>Decline</Button><Button size="sm" onClick={() => void props.acceptFriend(item.id)} disabled={props.busy}><Check /> Accept</Button></div></div>)}
             {outgoing.map(item => <div className="person-row" key={item.id}><div><strong>{usernameLabel(item.other.username)}</strong><small>Request sent</small></div><span className="status-chip">Pending</span></div>)}
-            {accepted.map(item => <div className="person-row" key={item.id}><div><strong>{usernameLabel(item.other.username)}</strong><small><MapPin />{item.other.city || 'Location not added'}</small></div><span className="status-chip"><Check /> Friends</span></div>)}
+            {accepted.map(item => <div className="person-row" key={item.id}><div><strong>{usernameLabel(item.other.username)}</strong><small><MapPin />{item.other.city || 'Location not added'}</small></div>{confirmUnfriendId === item.id ? <div className="unfriend-actions"><button type="button" className="unfriend-cancel" disabled={props.busy} onClick={() => setConfirmUnfriendId(null)}>Cancel</button><button type="button" className="unfriend-button" disabled={props.busy} onClick={async () => { if (await props.unfriend(item.id)) setConfirmUnfriendId(null); }}>Unfriend</button></div> : <button type="button" className="status-chip friend-status-button" onClick={() => setConfirmUnfriendId(item.id)}><Check /> Friends</button>}</div>)}
             {props.connections.length === 0 && <p className="panel-empty">No friends or requests yet. Search for someone to get started.</p>}
           </div>
         </>}
@@ -1100,6 +1102,16 @@ export default function CozyPreview() {
     await loadConnections(user);
   }
 
+  async function unfriend(friendshipId: number) {
+    if (!supabase || !user) return false;
+    setAccountBusy(true);
+    const { error } = await supabase.from('friendships').delete().eq('id', friendshipId).eq('status', 'accepted');
+    setAccountBusy(false);
+    if (error) { setAppError(error.message); return false; }
+    await Promise.all([loadConnections(user), loadAccount(user), submitted ? loadFeed(feedMode, user) : Promise.resolve()]);
+    return true;
+  }
+
   async function saveSettings(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!supabase || !user) return;
@@ -1228,7 +1240,7 @@ export default function CozyPreview() {
     </div><nav className="cozy-nav" aria-label="App navigation">{tabs.map(item => {
       const locked = item.id === 'world';
       return <button key={item.id} className={`${tab === item.id ? 'active' : ''} ${locked ? 'locked' : ''}`} disabled={locked} title={locked ? 'Coming later' : item.label} onClick={() => setTab(item.id)}><item.icon />{locked && <Lock className="nav-lock" />}<span>{item.label}</span></button>;
-    })}</nav>{profile && user && <YouToolsDialog panel={youPanel} setPanel={setYouPanel} userId={user.id} connections={connections} searchResults={searchResults} searchQuery={searchQuery} onSearchQueryChange={updateFriendSearch} searchPeople={searchPeople} sendFriendRequest={sendFriendRequest} acceptFriend={acceptFriend} declineFriend={declineFriend} xp={xp} level={level} streak={streak} saveSettings={saveSettings} signOut={signOut} usernameDraft={usernameDraft} setUsernameDraft={setUsernameDraft} cityDraft={cityDraft} setCityDraft={setCityDraft} citySelection={citySelection} setCitySelection={setCitySelection} profilePhoto={profilePhotoPreview} saveProfilePhoto={saveProfilePhoto} removeProfilePhoto={removeProfilePhoto} busy={accountBusy} />}
+    })}</nav>{profile && user && <YouToolsDialog panel={youPanel} setPanel={setYouPanel} userId={user.id} connections={connections} searchResults={searchResults} searchQuery={searchQuery} onSearchQueryChange={updateFriendSearch} searchPeople={searchPeople} sendFriendRequest={sendFriendRequest} acceptFriend={acceptFriend} declineFriend={declineFriend} unfriend={unfriend} xp={xp} level={level} streak={streak} saveSettings={saveSettings} signOut={signOut} usernameDraft={usernameDraft} setUsernameDraft={setUsernameDraft} cityDraft={cityDraft} setCityDraft={setCityDraft} citySelection={citySelection} setCitySelection={setCitySelection} profilePhoto={profilePhotoPreview} saveProfilePhoto={saveProfilePhoto} removeProfilePhoto={removeProfilePhoto} busy={accountBusy} />}
       <Dialog open={replacementStep !== null} onOpenChange={open => { if (!open) setReplacementStep(null); }}><DialogContent className="replacement-dialog"><DialogHeader><DialogTitle>{replacementStep === 'confirm' ? 'Replace your current Wurd?' : 'A new day has started'}</DialogTitle><DialogDescription>{replacementStep === 'confirm' ? 'Posting a new Wurd will remove your existing active Wurd. This action cannot be undone.' : 'Your current Wurd will remain active until it expires, or you can replace it now with a new Wurd for today.'}</DialogDescription></DialogHeader>{replacementStep === 'confirm' ? <div className="replacement-actions"><Button variant="outline" onClick={() => setReplacementStep(null)}>Keep current Wurd</Button><Button onClick={() => { setReplacementStep(null); setReplacementMode(true); setTab('today'); }}>Replace &amp; post</Button></div> : <div className="replacement-actions"><Button variant="outline" onClick={() => setReplacementStep(null)}>Not now</Button><Button onClick={() => setReplacementStep('confirm')}>Post today&apos;s Wurd</Button></div>}</DialogContent></Dialog>
     </section></main>
   );
