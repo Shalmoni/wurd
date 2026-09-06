@@ -1351,3 +1351,41 @@ html, body, #root { height: 100%; overflow: hidden; overscroll-behavior: none; }
 .today-app .live-word.word-fit-medium { font-size: clamp(13px, 2.65svh, 21px); }
 .today-app .live-word.word-fit-long { font-size: clamp(10px, 1.9svh, 15px); }
 .today-app .live-word.word-fit-xlong { font-size: clamp(8px, 1.65svh, 13px); letter-spacing: -.075em; }
+
+/* V2.1 Today feed: one generous, full-width Wurd per row. */
+.today-app .live-grid,
+.today-app .friends-card-grid {
+  grid-template-columns: minmax(0, 1fr);
+  grid-auto-rows: clamp(122px, 16svh, 154px);
+  gap: clamp(8px, 1.25svh, 12px);
+}
+.today-app .live-card,
+.today-app .friend-square {
+  padding: clamp(12px, 1.6svh, 16px);
+  border-radius: 21px;
+}
+.today-app .live-word {
+  width: calc(100% - 72px);
+  max-width: calc(100% - 72px);
+  margin: auto 0 0;
+  font-size: clamp(27px, 4.6svh, 38px);
+}
+.today-app .live-word.word-fit-medium { font-size: clamp(25px, 4.1svh, 34px); }
+.today-app .live-word.word-fit-long { font-size: clamp(22px, 3.6svh, 30px); }
+.today-app .live-word.word-fit-xlong { font-size: clamp(19px, 3.1svh, 26px); }
+.today-app .live-card > .echo-count {
+  right: clamp(12px, 1.6svh, 16px);
+  bottom: clamp(12px, 1.6svh, 16px);
+}
+.today-app .friend-square:has(.same-word-label) .live-word { margin: auto 0 0; }
+
+@media (max-height: 680px) {
+  .today-app .live-grid,
+  .today-app .friends-card-grid { grid-auto-rows: 112px; }
+  .today-app .live-card,
+  .today-app .friend-square { padding: 10px 12px; }
+  .today-app .live-word { font-size: 25px; }
+  .today-app .live-word.word-fit-medium { font-size: 23px; }
+  .today-app .live-word.word-fit-long { font-size: 20px; }
+  .today-app .live-word.word-fit-xlong { font-size: 18px; }
+}
