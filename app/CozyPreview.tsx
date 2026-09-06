@@ -53,6 +53,12 @@ const wordColorValues: Record<WordColor, string> = {
   pink: '#F5007B',
   red: '#F50000',
 };
+const echoStrengthOptions = [
+  { label: 'Choose', color: '#9AA9A3' },
+  { label: 'Meh', color: '#80FFBF' },
+  { label: 'Okay', color: '#52FFA8' },
+  { label: 'Wurd.', color: '#00E695' },
+] as const;
 
 const emojiChoices = ['🙂', '🔥', '✨', '❤️', '🌱', '💭'];
 const wordColorChoices: { value: WordColor; level: number; label: string }[] = [
@@ -291,11 +297,13 @@ function BrandHeader({ tab, submitted, submittedAt, now, emoji, color, wordStyle
   return <header className="cozy-header"><div className="cozy-logo">wurd</div></header>;
 }
 
-function EchoStat({ count, color }: { count: number; color?: string }) {
+function EchoStat({ count, color, onActivate }: { count: number; color?: string; onActivate?: () => void }) {
+  const contents = <><Waves /><span className="echo-total">{count}</span></>;
+  if (onActivate) return <button type="button" className="echo-count" style={{ '--echo-color': color } as CSSProperties} aria-label={`${count} total echoes. Choose your echo strength.`} onClick={event => { event.stopPropagation(); onActivate(); }}>{contents}</button>;
   return (
     <Popover>
       <PopoverTrigger className="echo-count" style={{ '--echo-color': color } as CSSProperties} aria-label={`${count} echoes. Echoes show how many people feel the same way.`} onClick={event => event.stopPropagation()}>
-        <Waves />{count}
+        {contents}
       </PopoverTrigger>
       <PopoverContent side="top" sideOffset={7} className="echo-tooltip">Echoes show how many people feel the same way.</PopoverContent>
     </Popover>
@@ -356,15 +364,36 @@ function timeLeft(value: string, now = Date.now()) {
   return `${Math.max(1, Math.floor(remaining / 60000))}m left`;
 }
 
-function FeedCard({ item, ownWord, now, friendState, onEcho, onFriendRequest }: { item: FeedWord; ownWord: string; now: number; friendState: CardFriendState; onEcho: () => void; onFriendRequest: () => void }) {
+function FeedCard({ item, ownWord, now, friendState, previewStrength, pickerOpen, onPickerChange, onEcho, onFriendRequest }: { item: FeedWord; ownWord: string; now: number; friendState: CardFriendState; previewStrength?: number; pickerOpen: boolean; onPickerChange: (open: boolean) => void; onEcho: (strength: number) => Promise<void>; onFriendRequest: () => void }) {
   const name = usernameLabel(item.username);
   const match = item.word.toLocaleUpperCase() === ownWord.toLocaleUpperCase();
   const avatar = profilePhotoUrl(item.avatar_url);
+  const storedStrength = item.my_echo_strength ?? (item.echoed_by_me ? 2 : 0);
+  const strength = Math.max(0, Math.min(3, previewStrength ?? storedStrength));
+  const [draftStrength, setDraftStrength] = useState(strength);
+  const [echoBusy, setEchoBusy] = useState(false);
+  const draftStrengthRef = useRef(strength);
+  const wasPickerOpen = useRef(false);
+  const activeStrength = pickerOpen ? draftStrength : strength;
+  const strengthOption = echoStrengthOptions[Math.max(0, Math.min(3, draftStrength))];
+  const otherEchoes = Math.max(0, item.echo_count - storedStrength);
+  const displayedEchoes = otherEchoes + activeStrength;
   const content = <><div className="live-person">{avatar && <Avatar className="wurd-card-avatar"><AvatarImage src={avatar} alt="" /></Avatar>}<span><strong>{name}</strong><small>{item.city || 'Location not added'} · {timeLeft(item.created_at, now)}</small></span></div><CardWord word={item.word} emoji={item.emoji} color={wordColorValues[item.color]} wordStyle={item.word_style || 'bold'} animation={item.animation} /></>;
   const friendControl = friendState === 'none' ? <button type="button" className="card-friend-control" aria-label={`Send friend request to ${name}`} onClick={event => { event.stopPropagation(); onFriendRequest(); }}><UserPlus /></button> : friendState === 'outgoing' ? <span className="card-friend-control pending" aria-label={`Friend request to ${name} is pending`} title="Request pending"><Clock3 /></span> : null;
   const cardStyle = { '--word-color': wordColorValues[item.color] } as CSSProperties;
+  useEffect(() => {
+    if (pickerOpen) {
+      draftStrengthRef.current = strength;
+      setDraftStrength(strength);
+    } else if (wasPickerOpen.current && draftStrengthRef.current !== strength) {
+      setEchoBusy(true);
+      void onEcho(draftStrengthRef.current).finally(() => setEchoBusy(false));
+    }
+    wasPickerOpen.current = pickerOpen;
+  }, [pickerOpen]);
+  const toggleEchoPicker = () => onPickerChange(!pickerOpen);
   if (match) return <article className="live-card friend-square exact-match" style={cardStyle} aria-label={`${name} chose the same word as you`}>{friendControl}<div className="card-static-content">{content}</div><EchoStat count={item.echo_count} color={wordColorValues[item.color]} /></article>;
-  return <article className={`live-card friend-square ${item.echoed_by_me ? 'echoed' : ''}`} style={cardStyle}>{friendControl}<button className="card-echo-action" aria-pressed={item.echoed_by_me} aria-label={`${name} chose ${item.word}. Tap to echo.`} onClick={onEcho}>{content}</button><EchoStat count={item.echo_count} color={wordColorValues[item.color]} /></article>;
+  return <article data-echo-card={String(item.id)} className={`live-card friend-square ${activeStrength > 0 ? 'echoed' : ''} ${pickerOpen ? 'echo-picker-open' : ''}`} style={cardStyle}>{friendControl}<button type="button" className="card-echo-action" aria-pressed={activeStrength > 0} aria-expanded={pickerOpen} aria-label={`${name} chose ${item.word}. Choose your echo strength.`} onClick={toggleEchoPicker}>{content}</button>{pickerOpen && <div className="echo-strength-inline" style={{ '--word-color': wordColorValues[item.color], '--echo-strength-color': strengthOption.color } as CSSProperties} onClick={toggleEchoPicker}><div className="echo-strength-title"><span>How loud?</span><b>{strengthOption.label}</b></div><div className="echo-strength-control" onClick={event => event.stopPropagation()}><span className="echo-strength-dots" aria-hidden="true"><i /><i /><i /><i /></span><Slider min={0} max={3} step={1} value={[draftStrength]} disabled={echoBusy} onValueChange={value => { const next = Array.isArray(value) ? value[0] : value; draftStrengthRef.current = next; setDraftStrength(next); }} aria-label="Echo strength: Meh, Okay, or Wurd" /></div></div>}<EchoStat count={displayedEchoes} color={wordColorValues[item.color]} onActivate={toggleEchoPicker} /></article>;
 }
 
 type TodayTabProps = {
@@ -381,11 +410,12 @@ type TodayTabProps = {
   refreshFeed: () => Promise<void>;
   friendStateFor: (userId: string) => CardFriendState;
   sendFriendRequest: (userId: string) => Promise<boolean>;
+  echoStrengths: Record<string, number>;
   echoed: string[];
-  toggleEcho: (id: number | string, echoed?: boolean) => Promise<void>;
+  setEchoStrength: (id: number | string, strength: number) => Promise<void>;
 };
 
-function TodayTab({ submitted, replacementMode, level, feed, feedLoading, now, spokeCount, feedMode, setFeedMode, setSubmitted, refreshFeed, friendStateFor, sendFriendRequest, echoed, toggleEcho }: TodayTabProps) {
+function TodayTab({ submitted, replacementMode, level, feed, feedLoading, now, spokeCount, feedMode, setFeedMode, setSubmitted, refreshFeed, friendStateFor, sendFriendRequest, echoStrengths, echoed, setEchoStrength }: TodayTabProps) {
   const [draft, setDraft] = useState('');
   const [pending, setPending] = useState('');
   const [emoji, setEmoji] = useState<string | null>(null);
@@ -396,6 +426,17 @@ function TodayTab({ submitted, replacementMode, level, feed, feedLoading, now, s
   const [posting, setPosting] = useState(false);
   const [friendTarget, setFriendTarget] = useState<FeedWord | null>(null);
   const [friendRequestState, setFriendRequestState] = useState<'confirm' | 'sending' | 'sent'>('confirm');
+  const [openEchoCardId, setOpenEchoCardId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!openEchoCardId) return;
+    const closeOnOutsidePress = (event: Event) => {
+      const target = event.target;
+      if (target instanceof Element && target.closest('[data-echo-card]')?.getAttribute('data-echo-card') === openEchoCardId) return;
+      setOpenEchoCardId(null);
+    };
+    document.addEventListener('pointerdown', closeOnOutsidePress);
+    return () => document.removeEventListener('pointerdown', closeOnOutsidePress);
+  }, [openEchoCardId]);
   function submit(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
     const clean = draft.trim();
@@ -422,7 +463,7 @@ function TodayTab({ submitted, replacementMode, level, feed, feedLoading, now, s
   return (
     <section className="tab-view live-view">
       <div className="today-toolbar"><div className="today-feed-summary"><span><i />{isSupabaseConfigured ? `${spokeCount} posted` : feedMode === 'Friends' ? '8 friends posted' : '1,284 posted'}</span><small>Tap someone&apos;s wurd to echo it.</small></div><div className="today-controls"><div className="today-mode cozy-segments"><button className={feedMode === 'New' ? 'active' : ''} onClick={() => setFeedMode('New')}>New</button><button className={feedMode === 'Top' ? 'active' : ''} onClick={() => setFeedMode('Top')}>Top</button><button className={feedMode === 'Friends' ? 'active' : ''} onClick={() => setFeedMode('Friends')}>Friends</button></div><button className="feed-refresh" aria-label="Refresh today" title="Refresh" disabled={feedLoading} onClick={() => void refreshFeed()}><RefreshCw /></button></div></div>
-      {isSupabaseConfigured ? <div className={feedMode === 'Friends' ? 'friends-card-grid' : 'live-grid'}>{feedLoading ? <p className="feed-empty">Finding today&apos;s words…</p> : feed.length ? feed.map(item => <FeedCard key={item.id} item={item} ownWord={submitted} now={now} friendState={friendStateFor(item.user_id)} onFriendRequest={() => { setFriendRequestState('confirm'); setFriendTarget(item); }} onEcho={() => toggleEcho(item.id, item.echoed_by_me)} />) : <p className="feed-empty">{feedMode === 'Friends' ? 'Your friends have not spoken yet.' : 'You are early. Today’s words will appear here.'}</p>}</div> : feedMode === 'Friends' ? <div className="friends-card-grid">{demoFriends.map(friend => <FriendCard key={friend.id} friend={friend} match={friend.word === submitted} echoed={echoed.includes(friend.id)} onEcho={() => void toggleEcho(friend.id)} />)}</div> : <div className="live-grid">{demoPeople.map((person, index) => <LiveCard key={`${person[0]}-${person[2]}`} person={person} echoed={echoed.includes(`live-${index}`)} onEcho={() => void toggleEcho(`live-${index}`)} />)}</div>}
+      {isSupabaseConfigured ? <div className={feedMode === 'Friends' ? 'friends-card-grid' : 'live-grid'}>{feedLoading ? <p className="feed-empty">Finding today&apos;s words…</p> : feed.length ? feed.map(item => <FeedCard key={item.id} item={item} ownWord={submitted} now={now} friendState={friendStateFor(item.user_id)} previewStrength={echoStrengths[String(item.id)]} pickerOpen={openEchoCardId === String(item.id)} onPickerChange={open => setOpenEchoCardId(open ? String(item.id) : null)} onFriendRequest={() => { setFriendRequestState('confirm'); setFriendTarget(item); }} onEcho={strength => setEchoStrength(item.id, strength)} />) : <p className="feed-empty">{feedMode === 'Friends' ? 'Your friends have not spoken yet.' : 'You are early. Today’s words will appear here.'}</p>}</div> : feedMode === 'Friends' ? <div className="friends-card-grid">{demoFriends.map(friend => <FriendCard key={friend.id} friend={friend} match={friend.word === submitted} echoed={echoed.includes(friend.id)} onEcho={() => void setEchoStrength(friend.id, echoed.includes(friend.id) ? 0 : 3)} />)}</div> : <div className="live-grid">{demoPeople.map((person, index) => <LiveCard key={`${person[0]}-${person[2]}`} person={person} echoed={echoed.includes(`live-${index}`)} onEcho={() => void setEchoStrength(`live-${index}`, echoed.includes(`live-${index}`) ? 0 : 3)} />)}</div>}
       <Dialog open={friendTarget !== null} onOpenChange={open => { if (!open && friendRequestState !== 'sending') setFriendTarget(null); }}><DialogContent className="friend-request-dialog"><DialogHeader><DialogTitle>{friendRequestState === 'sent' ? 'Request sent' : `Send friend request to ${usernameLabel(friendTarget?.username)}?`}</DialogTitle>{friendRequestState === 'sent' && <DialogDescription>They’ll see it in Friends.</DialogDescription>}</DialogHeader>{friendRequestState !== 'sent' && <div className="replacement-actions"><Button variant="outline" disabled={friendRequestState === 'sending'} onClick={() => setFriendTarget(null)}>Cancel</Button><Button disabled={friendRequestState === 'sending'} onClick={async () => { if (!friendTarget) return; setFriendRequestState('sending'); const sent = await sendFriendRequest(friendTarget.user_id); if (!sent) { setFriendRequestState('confirm'); return; } setFriendRequestState('sent'); window.setTimeout(() => setFriendTarget(null), 1100); }}>{friendRequestState === 'sending' ? 'Sending…' : 'Send'}</Button></div>}</DialogContent></Dialog>
     </section>
   );
@@ -738,6 +779,7 @@ export default function CozyPreview() {
   const [submittedWordStyle, setSubmittedWordStyle] = useState<WordStyle>('bold');
   const [submittedAnimation, setSubmittedAnimation] = useState<WordAnimation>('still');
   const [echoed, setEchoed] = useState<string[]>([]);
+  const [echoStrengths, setEchoStrengths] = useState<Record<string, number>>({});
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<WurdProfile | null>(null);
   const [feed, setFeed] = useState<FeedWord[]>([]);
@@ -971,23 +1013,21 @@ export default function CozyPreview() {
     window.localStorage.setItem('wurd:active', JSON.stringify({ ...post, localDate: dayKey, createdAt: postedAt }));
     setReplacementMode(false);
   }
-  async function toggleEcho(id: number | string, isEchoed = false) {
-    if (isLevelTenPreview() && id === -101) {
-      setEchoed(current => current.includes('preview-level10') ? current.filter(item => item !== 'preview-level10') : [...current, 'preview-level10']);
+  async function setEchoStrength(id: number | string, strength: number) {
+    const normalizedStrength = Math.max(0, Math.min(3, Math.round(strength)));
+    if (import.meta.env.DEV || typeof id !== 'number') {
+      const localId = String(id);
+      setEchoStrengths(current => ({ ...current, [localId]: normalizedStrength }));
+      setEchoed(current => normalizedStrength > 0 ? [...new Set([...current, localId])] : current.filter(item => item !== localId));
       return;
     }
-    if (supabase && user && typeof id === 'number') {
-      const result = isEchoed ? await supabase.rpc('un_echo_word', { p_daily_word_id: id }) : await supabase.rpc('echo_word', { p_daily_word_id: id });
+    if (supabase && user) {
+      const result = normalizedStrength === 0
+        ? await supabase.rpc('un_echo_word', { p_daily_word_id: id })
+        : await supabase.rpc('set_echo_strength', { p_daily_word_id: id, p_strength: normalizedStrength });
       if (result.error) { setAppError(result.error.message); return; }
       await Promise.all([loadFeed(feedMode, user), loadAccount(user)]);
-      return;
     }
-    const localId = String(id);
-    setEchoed(current => {
-      const next = current.includes(localId) ? current.filter(item => item !== localId) : [...current, localId];
-      window.localStorage.setItem(`wurd:echoes:${dayKey}`, JSON.stringify(next));
-      return next;
-    });
   }
 
   async function signIn() {
@@ -1155,7 +1195,7 @@ export default function CozyPreview() {
     if (relationship.status === 'accepted') return 'friend';
     return relationship.requester_id === user?.id ? 'outgoing' : 'incoming';
   };
-  const previewEchoed = echoed.includes('preview-level10');
+  const previewStrength = echoStrengths['-101'] ?? (echoed.includes('preview-level10') ? 2 : 0);
   const previewWord: FeedWord = {
     id: -101,
     user_id: 'preview-level10-user',
@@ -1171,16 +1211,17 @@ export default function CozyPreview() {
     animation: 'pulse',
     local_date: dayKey,
     created_at: new Date(clockNow - 2 * 60 * 60 * 1000).toISOString(),
-    echo_count: 12 + (previewEchoed ? 1 : 0),
+    echo_count: 12,
     spoke_count: spokeCount + 1,
-    echoed_by_me: previewEchoed,
+    echoed_by_me: previewStrength > 0,
+    my_echo_strength: previewStrength,
   };
   const visibleFeed = levelTenPreview ? [previewWord, ...feed.filter(item => item.id !== previewWord.id)] : feed;
   const ownEchoes = history.find(item => item.local_date === submittedLocalDate)?.echo_count ?? (activeSubmitted ? 37 + activeSubmitted.length * 11 : 0);
   return (
     <main className={`cozy-stage fixed-app active-${tab} ${(headerSubmitted || tab === 'you') ? 'today-app' : ''}`}><section className="cozy-shell"><BrandHeader tab={tab} submitted={headerSubmitted} submittedAt={submittedAt} now={clockNow} emoji={submittedEmoji} color={submittedColor} wordStyle={submittedWordStyle} animation={submittedAnimation} avatarUrl={level >= 5 ? profilePhotoPreview : null} echoes={ownEchoes} xp={xp} level={level} streak={streak} username={profile?.username} memberSince={profile?.created_at} city={profile?.city} countryCode={profile?.country_code} canReplace={tab === 'today' && canReplace && !replacementMode} onReplace={() => setReplacementStep('explain')} /><div className="cozy-main">
       {appError && <button className="app-error" onClick={() => setAppError('')}>{appError}</button>}
-      {tab === 'today' && <TodayTab submitted={activeSubmitted} replacementMode={replacementMode} level={level} feed={visibleFeed.filter(item => isWithinTodayWindow(item.created_at, clockNow))} feedLoading={feedLoading} now={clockNow} spokeCount={levelTenPreview ? spokeCount + 1 : spokeCount} feedMode={feedMode} setFeedMode={setFeedMode} setSubmitted={postWord} refreshFeed={async () => { if (!user) { window.location.reload(); return; } setAppError(''); try { await Promise.all([loadAccount(user), loadFeed(feedMode, user)]); } catch (reason) { setAppError(readableError(reason, 'Could not refresh today.')); } }} friendStateFor={friendStateFor} sendFriendRequest={sendFriendRequest} echoed={echoed} toggleEcho={toggleEcho} />}
+      {tab === 'today' && <TodayTab submitted={activeSubmitted} replacementMode={replacementMode} level={level} feed={visibleFeed.filter(item => isWithinTodayWindow(item.created_at, clockNow))} feedLoading={feedLoading} now={clockNow} spokeCount={levelTenPreview ? spokeCount + 1 : spokeCount} feedMode={feedMode} setFeedMode={setFeedMode} setSubmitted={postWord} refreshFeed={async () => { if (!user) { window.location.reload(); return; } setAppError(''); try { await Promise.all([loadAccount(user), loadFeed(feedMode, user)]); } catch (reason) { setAppError(readableError(reason, 'Could not refresh today.')); } }} friendStateFor={friendStateFor} sendFriendRequest={sendFriendRequest} echoStrengths={echoStrengths} echoed={echoed} setEchoStrength={setEchoStrength} />}
       {tab === 'world' && <WorldTab />}
       {tab === 'you' && <YouTab history={history} incomingRequestCount={incomingRequestCount} onOpenPanel={panel => { setAppError(''); setSearchResults([]); setYouPanel(panel); if (panel === 'friends') void loadConnections(user || undefined).catch(reason => setAppError(readableError(reason, 'Could not load friends.'))); }} />}
     </div><nav className="cozy-nav" aria-label="App navigation">{tabs.map(item => {

@@ -97,4 +97,5 @@ export type FeedWord = {
   echo_count: number;
   spoke_count: number;
   echoed_by_me: boolean;
+  my_echo_strength?: number;
 };
