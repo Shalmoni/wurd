@@ -268,7 +268,7 @@ function FittedTodayWord({ word, emoji, color, wordStyle, animation }: { word: s
     return () => observer.disconnect();
   }, [word, emoji, wordStyle]);
 
-  return <PopoverTrigger ref={frame} className={`today-word word-style-${wordStyle} word-animation-${animation}`} style={{ color: wordColorValues[color] }} aria-label={`${word}. Your current wurd.`}><span ref={text} className="today-word-text" style={{ '--word-scale': scale } as CSSProperties}>{word}{emoji && <span className="today-emoji"> {emoji}</span>}</span></PopoverTrigger>;
+  return <PopoverTrigger ref={frame} className={`today-word ${wordLengthClass(word)} word-style-${wordStyle} word-animation-${animation}`} style={{ color: wordColorValues[color] }} aria-label={`${word}. Your current wurd.`}><span ref={text} className="today-word-text" style={{ '--word-scale': scale } as CSSProperties}>{word}{emoji && <span className="today-emoji"> {emoji}</span>}</span></PopoverTrigger>;
 }
 
 function BrandHeader({ tab, submitted, submittedAt, now, emoji, color, wordStyle, animation = 'still', echoes, xp, level, streak, username, memberSince, city, countryCode, avatarUrl, canReplace, onReplace }: { tab: Tab; submitted: string; submittedAt?: string | null; now: number; emoji: string | null; color: WordColor; wordStyle: WordStyle; animation?: WordAnimation; echoes: number; xp: number; level: number; streak: number; username?: string; memberSince?: string | null; city?: string | null; countryCode?: string | null; avatarUrl?: string | null; canReplace?: boolean; onReplace?: () => void }) {

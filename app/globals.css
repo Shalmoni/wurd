@@ -294,10 +294,10 @@ button { cursor: pointer; }
 .today-app { height: 100svh; min-height: 0; overflow: hidden; }
 .today-app .cozy-shell { height: calc(100svh - 56px); min-height: 0; }
 .today-app .cozy-main { min-height: 0; overflow: hidden; }
-.today-app-header { min-height: clamp(158px, 23svh, 214px); flex: 0 0 clamp(158px, 23svh, 214px); display: grid; grid-template-rows: auto 1fr auto; padding: 18px 22px 14px; border-bottom: 1px solid #e6f0ec; background: #fff; }
-.today-brand-row, .today-meta-row { display: flex; align-items: center; justify-content: space-between; }
-.today-brand { color: #00b979; font-size: 29px; line-height: 1; font-weight: 900; letter-spacing: -.07em; }
-.header-progress { display: flex; align-items: center; gap: 7px; }
+.today-app-header { width: 100%; max-width: 100%; min-width: 0; min-height: clamp(158px, 23svh, 214px); flex: 0 0 clamp(158px, 23svh, 214px); display: grid; grid-template-rows: auto 1fr auto; overflow: hidden; padding: 18px 22px 14px; border-bottom: 1px solid #e6f0ec; background: #fff; contain: inline-size; }
+.today-brand-row, .today-meta-row { min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.today-brand { flex: 0 0 auto; color: #00b979; font-size: 29px; line-height: 1; font-weight: 900; letter-spacing: -.07em; }
+.header-progress { min-width: 0; flex: 1 1 auto; display: flex; align-items: center; justify-content: flex-end; gap: 7px; }
 .level-label { color: #61766d; font-size: 8px; font-weight: 800; letter-spacing: .06em; white-space: nowrap; }
 .level-label b { color: #12372b; font-size: 14px; letter-spacing: 0; }
 .header-xp { display: flex; align-items: center; gap: 6px; padding: 9px 13px; border: 1px solid #c5eedf; border-radius: 999px; background: #effff9; color: #008e5c; font: inherit; cursor: pointer; }
@@ -307,6 +307,9 @@ button { cursor: pointer; }
 .today-word { align-self: center; justify-self: center; width: 100%; max-width: 100%; overflow: hidden; padding: 0; border: 0; background: transparent; color: #00b979; font-family: inherit; font-size: clamp(36px, 8vw, 58px); line-height: .92; font-weight: 900; letter-spacing: -.075em; text-align: center; overflow-wrap: normal; white-space: nowrap; cursor: pointer; }
 .today-word-text { display: inline-block; min-width: max-content; padding: .05em .04em .1em; transform: scale(var(--word-scale, 1)); transform-origin: center; }
 .today-word-row { align-self: center; justify-self: center; position: relative; display: flex; align-items: center; justify-content: center; width: 92%; max-width: 92%; }
+.today-word.word-fit-medium { font-size: clamp(31px, 7vw, 50px); }
+.today-word.word-fit-long { font-size: clamp(23px, 5.5vw, 39px); }
+.today-word.word-fit-xlong { font-size: clamp(19px, 4.6vw, 33px); }
 .today-word-row:has(.replace-word-icon) { max-width: calc(92% - 31px); }
 .today-word-row .today-word { max-width: 100%; }
 .replace-word-icon { position: absolute; left: calc(100% + 7px); top: 50%; width: 24px; height: 24px; display: grid; place-items: center; padding: 0; transform: translateY(-50%); border: 1px solid #bcebdc; border-radius: 50%; background: #effff9; color: #00a86d; cursor: pointer; }
@@ -1180,6 +1183,9 @@ html, body, #root { height: 100%; overflow: hidden; overscroll-behavior: none; }
    in the middle, and the streak at the right edge. */
 .header-xp {
   width: min(176px, calc(100vw - 116px));
+  min-width: 0;
+  max-width: 176px;
+  flex: 0 1 176px;
   justify-content: space-between;
   column-gap: 4px;
   padding-left: 8px;
