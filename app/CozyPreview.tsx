@@ -245,6 +245,32 @@ function locationLabel(city?: string | null, countryCode?: string | null) {
   }
 }
 
+function FittedTodayWord({ word, emoji, color, wordStyle, animation }: { word: string; emoji: string | null; color: WordColor; wordStyle: WordStyle; animation: WordAnimation }) {
+  const frame = useRef<HTMLButtonElement>(null);
+  const text = useRef<HTMLSpanElement>(null);
+  const [scale, setScale] = useState(1);
+
+  useLayoutEffect(() => {
+    const frameElement = frame.current;
+    const textElement = text.current;
+    if (!frameElement || !textElement) return;
+
+    const fit = () => {
+      const availableWidth = frameElement.clientWidth;
+      const naturalWidth = textElement.scrollWidth;
+      setScale(availableWidth > 0 && naturalWidth > 0 ? Math.min(1, availableWidth / naturalWidth) : 1);
+    };
+
+    fit();
+    const observer = new ResizeObserver(fit);
+    observer.observe(frameElement);
+    void document.fonts?.ready.then(fit);
+    return () => observer.disconnect();
+  }, [word, emoji, wordStyle]);
+
+  return <PopoverTrigger ref={frame} className={`today-word word-style-${wordStyle} word-animation-${animation}`} style={{ color: wordColorValues[color] }} aria-label={`${word}. Your current wurd.`}><span ref={text} className="today-word-text" style={{ '--word-scale': scale } as CSSProperties}>{word}{emoji && <span className="today-emoji"> {emoji}</span>}</span></PopoverTrigger>;
+}
+
 function BrandHeader({ tab, submitted, submittedAt, now, emoji, color, wordStyle, animation = 'still', echoes, xp, level, streak, username, memberSince, city, countryCode, avatarUrl, canReplace, onReplace }: { tab: Tab; submitted: string; submittedAt?: string | null; now: number; emoji: string | null; color: WordColor; wordStyle: WordStyle; animation?: WordAnimation; echoes: number; xp: number; level: number; streak: number; username?: string; memberSince?: string | null; city?: string | null; countryCode?: string | null; avatarUrl?: string | null; canReplace?: boolean; onReplace?: () => void }) {
   const levelProgress = levelProgressFor(xp, level);
   const multiplier = multiplierForStreak(streak);
@@ -258,7 +284,7 @@ function BrandHeader({ tab, submitted, submittedAt, now, emoji, color, wordStyle
   if (submitted) return (
     <header className="today-app-header">
       {topRow}
-      <div className="today-word-row"><Popover><PopoverTrigger className={`today-word word-style-${wordStyle} word-animation-${animation}`} style={{ color: wordColorValues[color] }} aria-label={`${submitted}. Your current wurd.`}>{submitted}{emoji && <span className="today-emoji"> {emoji}</span>}</PopoverTrigger><PopoverContent side="bottom" sideOffset={7} className="echo-tooltip">This is your current Wurd. It stays live for up to 24 hours.</PopoverContent></Popover>{canReplace && <button className="replace-word-icon" type="button" aria-label="Post today's Wurd" title="A new day has started" onClick={onReplace}><Clock3 /></button>}</div>
+      <div className="today-word-row"><Popover><FittedTodayWord word={submitted} emoji={emoji} color={color} wordStyle={wordStyle} animation={animation} /><PopoverContent side="bottom" sideOffset={7} className="echo-tooltip">This is your current Wurd. It stays live for up to 24 hours.</PopoverContent></Popover>{canReplace && <button className="replace-word-icon" type="button" aria-label="Post today's Wurd" title="A new day has started" onClick={onReplace}><Clock3 /></button>}</div>
       <div className="today-meta-row"><p>{submittedAt ? timeLeft(submittedAt, now) : '24h left'} · {locationLabel(city, countryCode)}</p><EchoStat count={echoes} color={wordColorValues[color]} /></div>
     </header>
   );
