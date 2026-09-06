@@ -14,7 +14,7 @@ import countries110 from 'world-atlas/countries-110m.json';
 import type { FeatureCollection } from 'geojson';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarImage } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Slider } from '@/components/ui/slider';
@@ -334,7 +334,7 @@ function FeedCard({ item, ownWord, now, friendState, onEcho, onFriendRequest }: 
   const name = usernameLabel(item.username);
   const match = item.word.toLocaleUpperCase() === ownWord.toLocaleUpperCase();
   const avatar = profilePhotoUrl(item.avatar_url);
-  const content = <><div className="live-person"><Avatar className="wurd-card-avatar">{avatar && <AvatarImage src={avatar} alt="" />}<AvatarFallback aria-label="No profile photo" /></Avatar><span><strong>{name}</strong><small>{item.city || 'Location not added'} · {timeLeft(item.created_at, now)}</small></span></div><CardWord word={item.word} emoji={item.emoji} color={wordColorValues[item.color]} wordStyle={item.word_style || 'bold'} animation={item.animation} /></>;
+  const content = <><div className="live-person">{avatar && <Avatar className="wurd-card-avatar"><AvatarImage src={avatar} alt="" /></Avatar>}<span><strong>{name}</strong><small>{item.city || 'Location not added'} · {timeLeft(item.created_at, now)}</small></span></div><CardWord word={item.word} emoji={item.emoji} color={wordColorValues[item.color]} wordStyle={item.word_style || 'bold'} animation={item.animation} /></>;
   const friendControl = friendState === 'none' ? <button type="button" className="card-friend-control" aria-label={`Send friend request to ${name}`} onClick={event => { event.stopPropagation(); onFriendRequest(); }}><UserPlus /></button> : friendState === 'outgoing' ? <span className="card-friend-control pending" aria-label={`Friend request to ${name} is pending`} title="Request pending"><Clock3 /></span> : null;
   const cardStyle = { '--word-color': wordColorValues[item.color] } as CSSProperties;
   if (match) return <article className="live-card friend-square exact-match" style={cardStyle} aria-label={`${name} chose the same word as you`}>{friendControl}<div className="card-static-content">{content}</div><EchoStat count={item.echo_count} color={wordColorValues[item.color]} /></article>;
