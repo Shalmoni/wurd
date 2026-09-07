@@ -4,8 +4,8 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { CSSProperties, PointerEvent as ReactPointerEvent, SyntheticEvent } from 'react';
 import type { User } from '@supabase/supabase-js';
 import {
-  Check, CircleUserRound, Clock3, Flame, Globe2, Lock, LogOut,
-  MapPin, RefreshCw, Search, Settings, Sun, UserPlus, UsersRound,
+  Bell, Check, CircleUserRound, Clock3, Flame, Globe2, Lock, LogOut,
+  MapPin, RefreshCw, Search, Settings, Share2, Sun, UserPlus, UsersRound,
   Trophy,
 } from 'lucide-react';
 import { geoMercator, geoNaturalEarth1, geoPath } from 'd3-geo';
@@ -19,6 +19,16 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Slider } from '@/components/ui/slider';
 import { isSupabaseConfigured, supabase, type FeedWord, type WordColor, type WordStyle, type WurdProfile } from '@/lib/supabase';
+import {
+  disablePushNotifications,
+  dispatchPushEvent,
+  enablePushNotifications,
+  isInstalledApp,
+  readPushSettings,
+  savePushSettings,
+  type NotificationPreferences,
+  type PushStatus,
+} from '@/lib/push-notifications';
 
 type Tab = 'today' | 'world' | 'you';
 type Scope = 'World' | 'Israel' | 'Nearby';
@@ -166,6 +176,10 @@ function localDayKey() {
 
 function isLevelTenPreview() {
   return import.meta.env.DEV && typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('preview') === 'level10';
+}
+
+function isV21Preview() {
+  return import.meta.env.DEV && typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('preview') === 'v21';
 }
 
 function oneEmoji(value: string) {
@@ -573,6 +587,14 @@ type YouToolsDialogProps = {
   profilePhoto: string;
   saveProfilePhoto: (photo: Blob) => Promise<void>;
   removeProfilePhoto: () => Promise<void>;
+  pushStatus: PushStatus;
+  notificationPreferences: NotificationPreferences;
+  notificationBusy: boolean;
+  notificationError: string;
+  setNotificationPreferences: (preferences: NotificationPreferences) => void;
+  enableNotifications: () => Promise<void>;
+  saveNotificationPreferences: (preferences: NotificationPreferences) => Promise<void>;
+  disableNotifications: () => Promise<void>;
   busy: boolean;
 };
 
@@ -721,6 +743,7 @@ function YouToolsDialog(props: YouToolsDialogProps) {
             }} />
             {photoError && !photoCrop && <em className="profile-photo-error">{photoError}</em>}
           </section>}
+          <section className="notification-settings"><div><strong>Notifications</strong><small>{props.pushStatus === 'enabled' ? 'On for this device' : props.pushStatus === 'denied' ? 'Blocked in device settings' : props.pushStatus === 'unsupported' ? 'Not supported on this device' : 'Off for this device'}</small></div><div className="v21-notification-types compact"><button type="button" className={props.notificationPreferences.requests ? 'active' : ''} aria-pressed={props.notificationPreferences.requests} disabled={props.notificationBusy || props.pushStatus === 'unsupported'} onClick={() => { const next = { ...props.notificationPreferences, requests: !props.notificationPreferences.requests }; props.setNotificationPreferences(next); if (props.pushStatus === 'enabled') void props.saveNotificationPreferences(next); }}><span><UserPlus /></span><div><strong>Friend requests</strong><small>When someone wants to connect.</small></div><i>{props.notificationPreferences.requests && <Check />}</i></button><button type="button" className={props.notificationPreferences.friendWords ? 'active' : ''} aria-pressed={props.notificationPreferences.friendWords} disabled={props.notificationBusy || props.pushStatus === 'unsupported'} onClick={() => { const next = { ...props.notificationPreferences, friendWords: !props.notificationPreferences.friendWords }; props.setNotificationPreferences(next); if (props.pushStatus === 'enabled') void props.saveNotificationPreferences(next); }}><span className="wurd-alert-mark">w</span><div><strong>Friends&apos; Wurds</strong><small>When a friend posts a new Wurd.</small></div><i>{props.notificationPreferences.friendWords && <Check />}</i></button></div>{props.notificationError && <em className="notification-error">{props.notificationError}</em>}{props.pushStatus === 'enabled' ? <Button type="button" variant="outline" disabled={props.notificationBusy} onClick={() => void props.disableNotifications()}>Turn off on this device</Button> : <Button type="button" disabled={props.notificationBusy || props.pushStatus === 'unsupported' || (!props.notificationPreferences.requests && !props.notificationPreferences.friendWords)} onClick={() => void props.enableNotifications()}>{props.notificationBusy ? 'Turning on…' : 'Turn on alerts'}</Button>}</section>
           <form className="settings-form" onSubmit={event => void props.saveSettings(event)}><label htmlFor="settings-username">Username</label><Input id="settings-username" maxLength={24} value={props.usernameDraft} onChange={event => props.setUsernameDraft(event.target.value)} /><label htmlFor="settings-city">City</label><CityPicker id="settings-city" query={props.cityDraft} selected={props.citySelection} onQueryChange={props.setCityDraft} onSelect={props.setCitySelection} /><Button type="submit" disabled={props.busy}>Save changes</Button></form>
           <Button className="logout-button" variant="outline" onClick={() => void props.signOut()}><LogOut /> Log out</Button>
         </>}
@@ -809,6 +832,11 @@ export default function CozyPreview() {
   const [clockNow, setClockNow] = useState(Date.now);
   const [replacementStep, setReplacementStep] = useState<'explain' | 'confirm' | null>(null);
   const [replacementMode, setReplacementMode] = useState(false);
+  const [v21Step, setV21Step] = useState<'home' | 'open-installed' | 'notifications' | 'complete' | null>(null);
+  const [v21Notifications, setV21Notifications] = useState<NotificationPreferences>({ requests: true, friendWords: true });
+  const [pushStatus, setPushStatus] = useState<PushStatus>('prompt');
+  const [notificationBusy, setNotificationBusy] = useState(false);
+  const [notificationError, setNotificationError] = useState('');
   const friendSearchTimer = useRef<number | null>(null);
 
   async function loadAccount(activeUser: User) {
@@ -941,6 +969,34 @@ export default function CozyPreview() {
   }, []);
 
   useEffect(() => {
+    if (!user || !profile) return;
+    let live = true;
+    void readPushSettings().then(state => {
+      if (!live) return;
+      setPushStatus(state.status);
+      setV21Notifications(state.preferences);
+      const alreadyHandled = window.localStorage.getItem('wurd:v21:onboarding') === 'done';
+      if (!alreadyHandled || isV21Preview()) setV21Step(isInstalledApp() ? 'notifications' : 'home');
+    }).catch(reason => {
+      if (live) setNotificationError(readableError(reason, 'Could not check notification settings.'));
+    });
+    return () => { live = false; };
+  }, [user, profile?.id]);
+
+  useEffect(() => {
+    if (!user) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('open') === 'friends') {
+      setTab('you');
+      setYouPanel('friends');
+      void loadConnections(user).catch(reason => setAppError(readableError(reason, 'Could not load friends.')));
+    } else if (params.get('feed') === 'friends') {
+      setTab('today');
+      setFeedMode('Friends');
+    }
+  }, [user]);
+
+  useEffect(() => {
     const timer = window.setInterval(() => {
       setClockNow(Date.now());
       const nextDay = localDayKey();
@@ -996,6 +1052,7 @@ export default function CozyPreview() {
         result = await supabase.rpc('post_daily_word', { p_word: post.word, p_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, p_emoji: post.emoji, p_color: post.color, p_city: profile?.city || null, p_country_code: profile?.country_code || null, p_word_style: post.wordStyle });
       }
       if (result.error) throw result.error;
+      const postedId = Number((result.data as { id?: number } | null)?.id);
       setSubmittedState(post.word);
       setSubmittedAt(new Date().toISOString());
       setSubmittedLocalDate(localDayKey());
@@ -1004,6 +1061,7 @@ export default function CozyPreview() {
       setSubmittedWordStyle(post.wordStyle);
       setSubmittedAnimation(post.animation || 'still');
       await loadAccount(user);
+      if (Number.isInteger(postedId)) void dispatchPushEvent('friend_word', postedId);
       setReplacementMode(false);
       return;
     }
@@ -1091,11 +1149,45 @@ export default function CozyPreview() {
   async function sendFriendRequest(addresseeId: string) {
     if (!supabase || !user) return false;
     setAccountBusy(true);
-    const { error } = await supabase.from('friendships').insert({ requester_id: user.id, addressee_id: addresseeId, status: 'pending' });
+    const { data, error } = await supabase.from('friendships').insert({ requester_id: user.id, addressee_id: addresseeId, status: 'pending' }).select('id').single();
     setAccountBusy(false);
     if (error) { setAppError(error.code === '23505' ? 'A request already exists between you.' : error.message); return false; }
     await loadConnections(user);
+    if (data?.id) void dispatchPushEvent('friend_request', data.id);
     return true;
+  }
+
+  async function turnOnNotifications() {
+    if (!user) return;
+    setNotificationBusy(true);
+    setNotificationError('');
+    try {
+      await enablePushNotifications(user.id, v21Notifications);
+      setPushStatus('enabled');
+      window.localStorage.setItem('wurd:v21:onboarding', 'done');
+      setV21Step('complete');
+    } catch (reason) {
+      setNotificationError(readableError(reason, 'Could not turn on notifications.'));
+      if ('Notification' in window && Notification.permission === 'denied') setPushStatus('denied');
+    } finally { setNotificationBusy(false); }
+  }
+
+  async function updateNotificationSettings(preferences: NotificationPreferences) {
+    if (!user) return;
+    setNotificationBusy(true);
+    setNotificationError('');
+    try { await savePushSettings(user.id, preferences); }
+    catch (reason) { setNotificationError(readableError(reason, 'Could not save notification settings.')); }
+    finally { setNotificationBusy(false); }
+  }
+
+  async function turnOffNotifications() {
+    if (!user) return;
+    setNotificationBusy(true);
+    setNotificationError('');
+    try { await disablePushNotifications(user.id); setPushStatus('prompt'); }
+    catch (reason) { setNotificationError(readableError(reason, 'Could not turn off notifications.')); }
+    finally { setNotificationBusy(false); }
   }
 
   async function acceptFriend(friendshipId: number) {
@@ -1254,8 +1346,14 @@ export default function CozyPreview() {
     </div><nav className="cozy-nav" aria-label="App navigation">{tabs.map(item => {
       const locked = item.id === 'world';
       return <button key={item.id} className={`${tab === item.id ? 'active' : ''} ${locked ? 'locked' : ''}`} disabled={locked} title={locked ? 'Coming later' : item.label} onClick={() => setTab(item.id)}><item.icon />{locked && <Lock className="nav-lock" />}<span>{item.label}</span></button>;
-    })}</nav>{profile && user && <YouToolsDialog panel={youPanel} setPanel={setYouPanel} userId={user.id} connections={connections} searchResults={searchResults} searchQuery={searchQuery} onSearchQueryChange={updateFriendSearch} searchPeople={searchPeople} sendFriendRequest={sendFriendRequest} acceptFriend={acceptFriend} declineFriend={declineFriend} unfriend={unfriend} xp={xp} level={level} streak={streak} saveSettings={saveSettings} signOut={signOut} usernameDraft={usernameDraft} setUsernameDraft={setUsernameDraft} cityDraft={cityDraft} setCityDraft={setCityDraft} citySelection={citySelection} setCitySelection={setCitySelection} profilePhoto={profilePhotoPreview} saveProfilePhoto={saveProfilePhoto} removeProfilePhoto={removeProfilePhoto} busy={accountBusy} />}
+    })}</nav>{profile && user && <YouToolsDialog panel={youPanel} setPanel={setYouPanel} userId={user.id} connections={connections} searchResults={searchResults} searchQuery={searchQuery} onSearchQueryChange={updateFriendSearch} searchPeople={searchPeople} sendFriendRequest={sendFriendRequest} acceptFriend={acceptFriend} declineFriend={declineFriend} unfriend={unfriend} xp={xp} level={level} streak={streak} saveSettings={saveSettings} signOut={signOut} usernameDraft={usernameDraft} setUsernameDraft={setUsernameDraft} cityDraft={cityDraft} setCityDraft={setCityDraft} citySelection={citySelection} setCitySelection={setCitySelection} profilePhoto={profilePhotoPreview} saveProfilePhoto={saveProfilePhoto} removeProfilePhoto={removeProfilePhoto} pushStatus={pushStatus} notificationPreferences={v21Notifications} notificationBusy={notificationBusy} notificationError={notificationError} setNotificationPreferences={setV21Notifications} enableNotifications={turnOnNotifications} saveNotificationPreferences={updateNotificationSettings} disableNotifications={turnOffNotifications} busy={accountBusy} />}
       <Dialog open={replacementStep !== null} onOpenChange={open => { if (!open) setReplacementStep(null); }}><DialogContent className="replacement-dialog"><DialogHeader><DialogTitle>{replacementStep === 'confirm' ? 'Replace your current Wurd?' : 'A new day has started'}</DialogTitle><DialogDescription>{replacementStep === 'confirm' ? 'Posting a new Wurd will remove your existing active Wurd. This action cannot be undone.' : 'Your current Wurd will remain active until it expires, or you can replace it now with a new Wurd for today.'}</DialogDescription></DialogHeader>{replacementStep === 'confirm' ? <div className="replacement-actions"><Button variant="outline" onClick={() => setReplacementStep(null)}>Keep current Wurd</Button><Button onClick={() => { setReplacementStep(null); setReplacementMode(true); setTab('today'); }}>Replace &amp; post</Button></div> : <div className="replacement-actions"><Button variant="outline" onClick={() => setReplacementStep(null)}>Not now</Button><Button onClick={() => setReplacementStep('confirm')}>Post today&apos;s Wurd</Button></div>}</DialogContent></Dialog>
+      <Dialog open={v21Step !== null} onOpenChange={open => { if (!open) setV21Step(null); }}><DialogContent className="v21-preview-dialog">
+        {v21Step === 'home' && <><span className="v21-preview-label">V2.1 · 1 OF 2</span><div className="v21-feature-icon app-icon"><img src={`${import.meta.env.BASE_URL}icon-192.png`} alt="Wurd Home Screen icon" /></div><DialogHeader><DialogTitle>Put wurd on your Home Screen.</DialogTitle><DialogDescription>Add it, then open wurd from the new W icon to continue.</DialogDescription></DialogHeader><div className="install-directions"><div><strong>iPhone</strong><span><Share2 /> Share</span><i>→</i><span>Add to Home Screen</span></div><div><strong>Android</strong><span>⋮ Menu</span><i>→</i><span>Install app</span></div></div><div className="replacement-actions"><Button variant="outline" onClick={() => { window.localStorage.setItem('wurd:v21:onboarding', 'done'); setV21Step(null); }}>Not now</Button><Button onClick={() => setV21Step(isInstalledApp() || isV21Preview() ? 'notifications' : 'open-installed')}>It&apos;s on my Home Screen</Button></div></>}
+        {v21Step === 'open-installed' && <><span className="v21-preview-label">V2.1 · 1 OF 2</span><div className="v21-feature-icon app-icon"><img src={`${import.meta.env.BASE_URL}icon-192.png`} alt="Wurd Home Screen icon" /></div><DialogHeader><DialogTitle>Open wurd from your Home Screen.</DialogTitle><DialogDescription>Alerts can be turned on after you open the installed W app.</DialogDescription></DialogHeader><Button onClick={() => { window.localStorage.setItem('wurd:v21:onboarding', 'done'); setV21Step(null); }}>Got it</Button></>}
+        {v21Step === 'notifications' && <><span className="v21-preview-label">V2.1 · 2 OF 2</span><div className="v21-feature-icon"><Bell /></div><DialogHeader><DialogTitle>Stay close to your people.</DialogTitle><DialogDescription>Choose what Wurd can tell you about. No daily reminders. No noise.</DialogDescription></DialogHeader><div className="v21-notification-types"><button type="button" className={v21Notifications.requests ? 'active' : ''} aria-pressed={v21Notifications.requests} onClick={() => setV21Notifications(current => ({ ...current, requests: !current.requests }))}><span><UserPlus /></span><div><strong>Friend requests</strong><small>When someone wants to connect.</small></div><i>{v21Notifications.requests && <Check />}</i></button><button type="button" className={v21Notifications.friendWords ? 'active' : ''} aria-pressed={v21Notifications.friendWords} onClick={() => setV21Notifications(current => ({ ...current, friendWords: !current.friendWords }))}><span className="wurd-alert-mark">w</span><div><strong>Friends&apos; Wurds</strong><small>When a friend posts a new Wurd.</small></div><i>{v21Notifications.friendWords && <Check />}</i></button></div>{notificationError && <em className="notification-error">{notificationError}</em>}<div className="replacement-actions"><Button variant="outline" disabled={notificationBusy} onClick={() => { window.localStorage.setItem('wurd:v21:onboarding', 'done'); setV21Step(null); }}>Not now</Button><Button disabled={notificationBusy || (!v21Notifications.requests && !v21Notifications.friendWords)} onClick={() => void turnOnNotifications()}>{notificationBusy ? 'Turning on…' : 'Turn on alerts'}</Button></div></>}
+        {v21Step === 'complete' && <><span className="v21-preview-label">V2.1</span><div className="v21-feature-icon complete"><Check /></div><DialogHeader><DialogTitle>You&apos;re set.</DialogTitle><DialogDescription>Your selected alerts are on. You can change them later in Settings.</DialogDescription></DialogHeader><Button onClick={() => setV21Step(null)}>Done</Button></>}
+      </DialogContent></Dialog>
     </section></main>
   );
 }

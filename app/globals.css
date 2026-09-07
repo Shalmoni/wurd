@@ -1475,3 +1475,57 @@ html, body, #root { height: 100%; overflow: hidden; overscroll-behavior: none; }
 .echo-strength-dots { position: absolute; z-index: 3; inset: 0 2px; display: flex; align-items: center; justify-content: space-between; pointer-events: none; }
 .echo-strength-dots i { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,.55); }
 .live-card.echoed { border-color: var(--word-color, #00e695); background: color-mix(in srgb, var(--word-color, #00e695) 9%, white); }
+
+/* V2.1 Home Screen and notification setup. */
+.v21-preview-dialog {
+  width: min(calc(100% - 28px), 420px) !important;
+  gap: 18px !important;
+  padding: 25px !important;
+  overflow: hidden;
+  border: 1px solid #c8ecdf !important;
+  border-radius: 28px !important;
+  background: #fff !important;
+}
+.v21-preview-label { color: #008e5c; font-size: 10px; font-weight: 900; letter-spacing: .12em; }
+.v21-feature-icon { width: 74px; height: 74px; display: grid; place-items: center; position: relative; border-radius: 22px; background: #00e695; color: #093c2b; box-shadow: 0 13px 30px rgba(0, 230, 149, .2); }
+.v21-feature-icon svg { width: 32px; height: 32px; stroke-width: 1.8; }
+.v21-feature-icon.app-icon { background: transparent; box-shadow: 0 13px 30px rgba(0, 230, 149, .16); }
+.v21-feature-icon.app-icon img { width: 74px; height: 74px; display: block; border-radius: 18px; object-fit: cover; }
+.v21-feature-icon.complete { border-radius: 50%; }
+.v21-preview-dialog h2 { max-width: 330px; color: #101714; font: 700 clamp(27px, 8vw, 34px)/1.02 Georgia, 'Times New Roman', serif; letter-spacing: -.045em; }
+.v21-preview-dialog [data-slot='dialog-description'] { max-width: 330px; color: #60756c; font-size: 14px; line-height: 1.45; }
+.install-directions { display: grid; gap: 9px; }
+.install-directions > div { min-height: 52px; display: grid; grid-template-columns: 60px minmax(62px, auto) 14px minmax(0, 1fr); align-items: center; gap: 7px; padding: 9px 12px; border: 1px solid #d8e9e3; border-radius: 16px; color: #173b2f; font-size: 12px; }
+.install-directions strong { font-size: 12px; }
+.install-directions span { min-width: 0; display: inline-flex; align-items: center; gap: 4px; font-weight: 750; }
+.install-directions span:last-child { white-space: nowrap; }
+.install-directions svg { width: 15px; height: 15px; }
+.install-directions i { color: #00a86d; font-style: normal; text-align: center; }
+.v21-notification-types { display: grid; gap: 9px; }
+.v21-notification-types > button { min-height: 70px; display: grid; grid-template-columns: 40px minmax(0, 1fr) 25px; align-items: center; gap: 11px; padding: 11px 12px; border: 1px solid #d8e9e3; border-radius: 18px; background: #fff; color: #173b2f; text-align: left; }
+.v21-notification-types > button.active { border-color: #61dfb0; background: #f1fff9; }
+.v21-notification-types > button > span { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 13px; background: #ddf9ed; color: #008e5c; }
+.v21-notification-types > button.active > span { background: #00e695; color: #093c2b; }
+.v21-notification-types > button > span svg { width: 20px; height: 20px; }
+.v21-notification-types .wurd-alert-mark { font: 900 25px/1 Georgia, 'Times New Roman', serif; }
+.v21-notification-types div { min-width: 0; display: grid; gap: 3px; }
+.v21-notification-types strong { color: #14231e; font-size: 14px; }
+.v21-notification-types small { color: #60756c; font-size: 11px; line-height: 1.3; }
+.v21-notification-types > button > i { width: 24px; height: 24px; display: grid; place-items: center; border: 1px solid #c8ddd5; border-radius: 50%; color: #093c2b; font-style: normal; }
+.v21-notification-types > button.active > i { border-color: #00e695; background: #00e695; }
+.v21-notification-types > button > i svg { width: 14px; height: 14px; stroke-width: 3; }
+.v21-preview-dialog > [data-slot='button']:last-child { width: 100%; }
+.notification-settings { display: grid; gap: 10px; padding: 13px; border: 1px solid #d8e9e3; border-radius: 18px; background: #f8fffc; }
+.notification-settings > div:first-child { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.notification-settings > div:first-child strong { color: #123d2f; font-size: 15px; }
+.notification-settings > div:first-child small { color: #60756c; font-size: 11px; }
+.v21-notification-types.compact > button { min-height: 58px; grid-template-columns: 34px minmax(0, 1fr) 22px; padding: 8px 9px; border-radius: 14px; }
+.v21-notification-types.compact > button > span { width: 34px; height: 34px; border-radius: 11px; }
+.notification-settings > [data-slot='button'] { width: 100%; }
+.notification-error { color: #a52539; font-size: 12px; font-style: normal; line-height: 1.35; }
+@media (max-width: 370px) {
+  .v21-preview-dialog { padding: 21px !important; }
+  .install-directions > div { grid-template-columns: 54px 1fr; }
+  .install-directions i { display: none; }
+  .install-directions span:last-child { grid-column: 2; white-space: normal; }
+}

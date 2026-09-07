@@ -258,6 +258,11 @@ otp_expiry = 3600
 enable_signup = false
 # If enabled, users need to confirm their phone number before signing in.
 enable_confirmations = false
+
+[functions.send-push]
+# The function verifies the caller against Auth itself, allowing one code path
+# for both current asymmetric and legacy JWT signing configurations.
+verify_jwt = false
 # Template for sending OTP to users
 template = "Your code is {{ .Code }}"
 # Controls the minimum amount of time that must pass before sending another sms otp.
