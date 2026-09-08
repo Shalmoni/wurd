@@ -379,7 +379,9 @@ function LiveCard({ person, echoed, onEcho }: { person: typeof livePeople[number
 function timeLeft(value: string, now = Date.now()) {
   const remaining = new Date(value).getTime() + 24 * 60 * 60 * 1000 - now;
   if (!Number.isFinite(remaining) || remaining <= 0) return 'expired';
-  if (remaining >= 60 * 60 * 1000) return `${Math.floor(remaining / (60 * 60 * 1000))}h left`;
+  // Once the whole-hour label would drop to "1h left", show the more useful
+  // minute countdown instead.
+  if (remaining >= 2 * 60 * 60 * 1000) return `${Math.floor(remaining / (60 * 60 * 1000))}h left`;
   return `${Math.max(1, Math.floor(remaining / 60000))}m left`;
 }
 
