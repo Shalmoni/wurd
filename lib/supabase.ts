@@ -95,7 +95,19 @@ export type FeedWord = {
   local_date: string;
   created_at: string;
   echo_count: number;
+  reply_count: number;
+  replies?: WurdReply[];
   spoke_count: number;
   echoed_by_me: boolean;
   my_echo_strength?: number;
+};
+
+export type WurdReply = {
+  id: number;
+  daily_word_id: number;
+  user_id: string;
+  username: string;
+  avatar_url: string | null;
+  word: string;
+  created_at: string;
 };
