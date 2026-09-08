@@ -551,8 +551,8 @@ function SwipeWurdCard({ children, className, item, onReply, onEcho, onDismiss }
     }
     if (origin.axis !== 'horizontal') return;
     setDragging(true);
-    // Resist the drag so the card feels pulled, never dragged off-screen.
-    setPull(Math.sign(dx) * 42 * (1 - Math.exp(-Math.abs(dx) / 105)));
+    // A bounded gesture progress squeezes only the surface; content stays put.
+    setPull(Math.sign(dx) * Math.min(1, Math.abs(dx) / 110));
   }
   function finish(event: ReactPointerEvent<HTMLDivElement>) {
     const origin = start.current;
@@ -565,7 +565,7 @@ function SwipeWurdCard({ children, className, item, onReply, onEcho, onDismiss }
     if (Math.abs(dx) < 42 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
     if (dx < 0) onReply(); else onEcho();
   }
-  return <div className={`${className} ${dragging ? 'is-pulling' : ''}`} data-reply-card={String(item.id)} style={{ '--word-color': wordColorValues[item.color], '--card-pull': `${pull}px` } as CSSProperties} tabIndex={0} role="group" aria-label={`${usernameLabel(item.username)}: swipe left to reply, right to echo. Keyboard: left or right arrow, Escape to close.`} onKeyDown={event => { if (event.target !== event.currentTarget) return; if (event.key === 'Escape') onDismiss(); if (event.key === 'ArrowLeft') { event.preventDefault(); onReply(); } if (event.key === 'ArrowRight') { event.preventDefault(); onEcho(); } }} onPointerDown={begin} onPointerMove={move} onPointerUp={finish} onPointerCancel={resetPull} onLostPointerCapture={resetPull}>{children}</div>;
+  return <div className={`${className} ${dragging ? 'is-pulling' : ''}`} data-reply-card={String(item.id)} style={{ '--word-color': wordColorValues[item.color], '--card-squeeze-x': 1 - Math.abs(pull) * .035, '--card-squeeze-y': 1 - Math.abs(pull) * .025, '--reply-grow': Math.max(0, -pull), '--echo-grow': Math.max(0, pull) } as CSSProperties} tabIndex={0} role="group" aria-label={`${usernameLabel(item.username)}: swipe left to reply, right to echo. Keyboard: left or right arrow, Escape to close.`} onKeyDown={event => { if (event.target !== event.currentTarget) return; if (event.key === 'Escape') onDismiss(); if (event.key === 'ArrowLeft') { event.preventDefault(); onReply(); } if (event.key === 'ArrowRight') { event.preventDefault(); onEcho(); } }} onPointerDown={begin} onPointerMove={move} onPointerUp={finish} onPointerCancel={resetPull} onLostPointerCapture={resetPull}>{children}</div>;
 }
 
 type TodayTabProps = {
