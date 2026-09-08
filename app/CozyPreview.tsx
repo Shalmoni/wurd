@@ -527,23 +527,45 @@ function FloatingReplies({ replies, currentUserId }: { replies: WurdReply[]; cur
   })}</div>;
 }
 
-function SwipeWurdCard({ children, className, item, onReply, onEcho }: { children: ReactNode; className: string; item: FeedWord; onReply: () => void; onEcho: () => void }) {
-  const start = useRef<{ x: number; y: number; id: number } | null>(null);
+function SwipeWurdCard({ children, className, item, onReply, onEcho, onDismiss }: { children: ReactNode; className: string; item: FeedWord; onReply: () => void; onEcho: () => void; onDismiss: () => void }) {
+  const start = useRef<{ x: number; y: number; id: number; axis: 'horizontal' | 'vertical' | null } | null>(null);
+  const [pull, setPull] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  function resetPull() {
+    start.current = null;
+    setDragging(false);
+    setPull(0);
+  }
   function begin(event: ReactPointerEvent<HTMLDivElement>) {
     if (!event.isPrimary || event.button !== 0 || (event.target instanceof Element && event.target.closest('button, input, [role="slider"], .inline-reply-panel, .echo-strength-inline'))) return;
-    start.current = { x: event.clientX, y: event.clientY, id: event.pointerId };
+    start.current = { x: event.clientX, y: event.clientY, id: event.pointerId, axis: null };
     event.currentTarget.setPointerCapture(event.pointerId);
   }
-  function finish(event: ReactPointerEvent<HTMLDivElement>) {
+  function move(event: ReactPointerEvent<HTMLDivElement>) {
     const origin = start.current;
-    start.current = null;
     if (!origin || origin.id !== event.pointerId) return;
     const dx = event.clientX - origin.x;
     const dy = event.clientY - origin.y;
+    if (!origin.axis && Math.max(Math.abs(dx), Math.abs(dy)) >= 8) {
+      origin.axis = Math.abs(dx) > Math.abs(dy) * 1.5 ? 'horizontal' : 'vertical';
+    }
+    if (origin.axis !== 'horizontal') return;
+    setDragging(true);
+    // Resist the drag so the card feels pulled, never dragged off-screen.
+    setPull(Math.sign(dx) * 42 * (1 - Math.exp(-Math.abs(dx) / 105)));
+  }
+  function finish(event: ReactPointerEvent<HTMLDivElement>) {
+    const origin = start.current;
+    resetPull();
+    if (!origin || origin.id !== event.pointerId) return;
+    const dx = event.clientX - origin.x;
+    const dy = event.clientY - origin.y;
+    if (Math.abs(dx) < 8 && Math.abs(dy) < 8) { onDismiss(); return; }
+    if (origin.axis === 'vertical') return;
     if (Math.abs(dx) < 42 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
     if (dx < 0) onReply(); else onEcho();
   }
-  return <div className={className} data-reply-card={String(item.id)} style={{ '--word-color': wordColorValues[item.color] } as CSSProperties} tabIndex={0} role="group" aria-label={`${usernameLabel(item.username)}: swipe left to reply, right to echo. Keyboard: left or right arrow.`} onKeyDown={event => { if (event.target !== event.currentTarget) return; if (event.key === 'ArrowLeft') { event.preventDefault(); onReply(); } if (event.key === 'ArrowRight') { event.preventDefault(); onEcho(); } }} onPointerDown={begin} onPointerUp={finish} onPointerCancel={() => { start.current = null; }}>{children}</div>;
+  return <div className={`${className} ${dragging ? 'is-pulling' : ''}`} data-reply-card={String(item.id)} style={{ '--word-color': wordColorValues[item.color], '--card-pull': `${pull}px` } as CSSProperties} tabIndex={0} role="group" aria-label={`${usernameLabel(item.username)}: swipe left to reply, right to echo. Keyboard: left or right arrow, Escape to close.`} onKeyDown={event => { if (event.target !== event.currentTarget) return; if (event.key === 'Escape') onDismiss(); if (event.key === 'ArrowLeft') { event.preventDefault(); onReply(); } if (event.key === 'ArrowRight') { event.preventDefault(); onEcho(); } }} onPointerDown={begin} onPointerMove={move} onPointerUp={finish} onPointerCancel={resetPull} onLostPointerCapture={resetPull}>{children}</div>;
 }
 
 type TodayTabProps = {
@@ -681,7 +703,7 @@ function TodayTab({ submitted, replacementMode, level, feed, feedLoading, now, s
         const repliesOpen = replyTarget?.id === item.id;
         const card = <FeedCard key={item.id} item={displayItem} ownWord={submitted} now={now} friendState={friendStateFor(item.user_id)} previewStrength={echoStrengths[String(item.id)]} pickerOpen={openEchoCardId === String(item.id)} repliesOpen={repliesOpen} onPickerChange={open => { if (open) setReplyTarget(null); setOpenEchoCardId(open ? String(item.id) : null); }} onFriendRequest={() => { setFriendRequestState('confirm'); setFriendTarget(item); }} onEcho={strength => setEchoStrength(item.id, strength)} />;
         const visibleReplies = repliesFor(item);
-        return <SwipeWurdCard className={`wurd-cloud-card ${repliesOpen ? 'composing-reply' : ''}`} key={item.id} item={item} onReply={() => { if (!repliesOpen) openReplies(displayItem); }} onEcho={() => { if (item.word.toLocaleUpperCase() === submitted.toLocaleUpperCase()) return; setReplyTarget(null); setOpenEchoCardId(String(item.id)); }}>{card}<FloatingReplies replies={visibleReplies} currentUserId={currentUserId} />{repliesOpen && <ReplyThread key={item.id} onClose={() => setReplyTarget(current => current?.id === item.id ? null : current)} replies={replyRows} currentUserId={currentUserId} loading={replyLoading} sending={replySending} error={replyError} onSubmit={postReply} />}</SwipeWurdCard>;
+        return <SwipeWurdCard className={`wurd-cloud-card ${repliesOpen ? 'composing-reply' : ''}`} key={item.id} item={item} onDismiss={() => { setOpenEchoCardId(null); setReplyTarget(null); }} onReply={() => { if (!repliesOpen) openReplies(displayItem); }} onEcho={() => { if (item.word.toLocaleUpperCase() === submitted.toLocaleUpperCase()) return; setReplyTarget(null); setOpenEchoCardId(String(item.id)); }}>{card}<FloatingReplies replies={visibleReplies} currentUserId={currentUserId} />{repliesOpen && <ReplyThread key={item.id} onClose={() => setReplyTarget(current => current?.id === item.id ? null : current)} replies={replyRows} currentUserId={currentUserId} loading={replyLoading} sending={replySending} error={replyError} onSubmit={postReply} />}</SwipeWurdCard>;
       }) : <p className="feed-empty">{feedMode === 'Friends' ? 'Your friends have not spoken yet.' : 'You are early. Today’s words will appear here.'}</p>}</div> : feedMode === 'Friends' ? <div className="friends-card-grid">{demoFriends.map(friend => <FriendCard key={friend.id} friend={friend} match={friend.word === submitted} echoed={echoed.includes(friend.id)} onEcho={() => void setEchoStrength(friend.id, echoed.includes(friend.id) ? 0 : 3)} />)}</div> : <div className="live-grid">{demoPeople.map((person, index) => <LiveCard key={`${person[0]}-${person[2]}`} person={person} echoed={echoed.includes(`live-${index}`)} onEcho={() => void setEchoStrength(`live-${index}`, echoed.includes(`live-${index}`) ? 0 : 3)} />)}</div>}
       <Dialog open={friendTarget !== null} onOpenChange={open => { if (!open && friendRequestState !== 'sending') setFriendTarget(null); }}><DialogContent className="friend-request-dialog"><DialogHeader><DialogTitle>{friendRequestState === 'sent' ? 'Request sent' : `Send friend request to ${usernameLabel(friendTarget?.username)}?`}</DialogTitle>{friendRequestState === 'sent' && <DialogDescription>They’ll see it in Friends.</DialogDescription>}</DialogHeader>{friendRequestState !== 'sent' && <div className="replacement-actions"><Button variant="outline" disabled={friendRequestState === 'sending'} onClick={() => setFriendTarget(null)}>Cancel</Button><Button disabled={friendRequestState === 'sending'} onClick={async () => { if (!friendTarget) return; setFriendRequestState('sending'); const sent = await sendFriendRequest(friendTarget.user_id); if (!sent) { setFriendRequestState('confirm'); return; } setFriendRequestState('sent'); window.setTimeout(() => setFriendTarget(null), 1100); }}>{friendRequestState === 'sending' ? 'Sending…' : 'Send'}</Button></div>}</DialogContent></Dialog>
     </section>

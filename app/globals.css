@@ -1708,6 +1708,11 @@ html, body, #root { height: 100%; overflow: hidden; overscroll-behavior: none; }
 .today-app .live-grid:has(.wurd-cloud-card),
 .today-app .friends-card-grid:has(.wurd-cloud-card) { align-content: start; }
 .wurd-cloud-card { position: relative; min-width: 0; min-height: 0; height: 100%; scroll-snap-align: start; touch-action: pan-y; }
+.wurd-cloud-card { transform: translateX(var(--card-pull, 0px)); transition: transform 260ms cubic-bezier(.2, .9, .25, 1.15); }
+.wurd-cloud-card.is-pulling { transition: none; user-select: none; }
+@media (prefers-reduced-motion: reduce) {
+  .wurd-cloud-card { transform: none; transition: none; }
+}
 .today-app .wurd-cloud-card > .live-card { height: 100%; }
 .today-app .wurd-cloud-card .live-card:active { transform: none; }
 .today-app .wurd-cloud-card .live-card .live-word {
