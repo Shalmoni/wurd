@@ -390,11 +390,11 @@ function timeLeft(value: string, now = Date.now()) {
   return `${Math.max(1, Math.floor(remaining / 60000))}m left`;
 }
 
-function ReplyStat({ count }: { count: number }) {
-  return <span className="reply-count" aria-label={`${count} ${count === 1 ? 'reply' : 'replies'}`}><MessageCircle /><span>{count}</span></span>;
+function ReplyStat({ count, open, onActivate }: { count: number; open: boolean; onActivate: () => void }) {
+  return <button type="button" className="reply-count" aria-label={`${count} replies. Reply to this Wurd.`} aria-expanded={open} onClick={event => { event.stopPropagation(); onActivate(); }}><MessageCircle /><span>{count}</span></button>;
 }
 
-function FeedCard({ item, ownWord, friendState, previewStrength, pickerOpen, repliesOpen, onPickerChange, onEcho, onFriendRequest }: { item: FeedWord; ownWord: string; now: number; friendState: CardFriendState; previewStrength?: number; pickerOpen: boolean; repliesOpen: boolean; onPickerChange: (open: boolean) => void; onEcho: (strength: number) => Promise<void>; onFriendRequest: () => void }) {
+function FeedCard({ item, ownWord, friendState, previewStrength, pickerOpen, repliesOpen, onPickerChange, onEcho, onFriendRequest, onOpenReply }: { item: FeedWord; ownWord: string; now: number; friendState: CardFriendState; previewStrength?: number; pickerOpen: boolean; repliesOpen: boolean; onPickerChange: (open: boolean) => void; onEcho: (strength: number) => Promise<void>; onFriendRequest: () => void; onOpenReply: () => void }) {
   const name = usernameLabel(item.username);
   const match = item.word.toLocaleUpperCase() === ownWord.toLocaleUpperCase();
   const avatar = profilePhotoUrl(item.avatar_url);
@@ -411,7 +411,7 @@ function FeedCard({ item, ownWord, friendState, previewStrength, pickerOpen, rep
   const replyCount = item.reply_count ?? 0;
   const content = <><div className="live-person">{avatar && <Avatar className="wurd-card-avatar"><AvatarImage src={avatar} alt="" /></Avatar>}<span><strong>{name}</strong><small className="card-city">{item.city || 'Location not added'}</small></span></div><CardWord word={item.word} emoji={item.emoji} color={wordColorValues[item.color]} wordStyle={item.word_style || 'bold'} animation={item.animation} /></>;
   const friendControl = friendState === 'none' ? <button type="button" className="card-friend-control" aria-label={`Send friend request to ${name}`} onClick={event => { event.stopPropagation(); onFriendRequest(); }}><UserPlus /></button> : friendState === 'outgoing' ? <span className="card-friend-control pending" aria-label={`Friend request to ${name} is pending`} title="Request pending"><Clock3 /></span> : null;
-  const reactions = (echoCount: number, personalStrength = 0) => <div className="card-reactions"><ReplyStat count={replyCount} /><EchoStat passive count={echoCount} color={wordColorValues[item.color]} strength={personalStrength} /></div>;
+  const reactions = (echoCount: number, personalStrength = 0) => <div className="card-reactions"><ReplyStat count={replyCount} open={repliesOpen} onActivate={onOpenReply} /><EchoStat passive={match} count={echoCount} color={wordColorValues[item.color]} strength={personalStrength} onActivate={match ? undefined : () => onPickerChange(!pickerOpen)} /></div>;
   const cardStyle = { '--word-color': wordColorValues[item.color] } as CSSProperties;
   useEffect(() => {
     if (pickerOpen) {
@@ -527,45 +527,19 @@ function FloatingReplies({ replies, currentUserId }: { replies: WurdReply[]; cur
   })}</div>;
 }
 
-function SwipeWurdCard({ children, className, item, onReply, onEcho, onDismiss }: { children: ReactNode; className: string; item: FeedWord; onReply: () => void; onEcho: () => void; onDismiss: () => void }) {
-  const start = useRef<{ x: number; y: number; id: number; axis: 'horizontal' | 'vertical' | null } | null>(null);
-  const [pull, setPull] = useState(0);
-  const [dragging, setDragging] = useState(false);
-  function resetPull() {
-    start.current = null;
-    setDragging(false);
-    setPull(0);
-  }
+function WurdCard({ children, className, item, onDismiss }: { children: ReactNode; className: string; item: FeedWord; onDismiss: () => void }) {
+  const start = useRef<{ x: number; y: number; id: number } | null>(null);
   function begin(event: ReactPointerEvent<HTMLDivElement>) {
+    start.current = null;
     if (!event.isPrimary || event.button !== 0 || (event.target instanceof Element && event.target.closest('button, input, [role="slider"], .inline-reply-panel, .echo-strength-inline'))) return;
-    start.current = { x: event.clientX, y: event.clientY, id: event.pointerId, axis: null };
-    event.currentTarget.setPointerCapture(event.pointerId);
-  }
-  function move(event: ReactPointerEvent<HTMLDivElement>) {
-    const origin = start.current;
-    if (!origin || origin.id !== event.pointerId) return;
-    const dx = event.clientX - origin.x;
-    const dy = event.clientY - origin.y;
-    if (!origin.axis && Math.max(Math.abs(dx), Math.abs(dy)) >= 8) {
-      origin.axis = Math.abs(dx) > Math.abs(dy) * 1.5 ? 'horizontal' : 'vertical';
-    }
-    if (origin.axis !== 'horizontal') return;
-    setDragging(true);
-    // A bounded gesture progress squeezes only the surface; content stays put.
-    setPull(Math.sign(dx) * Math.min(1, Math.abs(dx) / 110));
+    start.current = { x: event.clientX, y: event.clientY, id: event.pointerId };
   }
   function finish(event: ReactPointerEvent<HTMLDivElement>) {
     const origin = start.current;
-    resetPull();
-    if (!origin || origin.id !== event.pointerId) return;
-    const dx = event.clientX - origin.x;
-    const dy = event.clientY - origin.y;
-    if (Math.abs(dx) < 8 && Math.abs(dy) < 8) { onDismiss(); return; }
-    if (origin.axis === 'vertical') return;
-    if (Math.abs(dx) < 42 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
-    if (dx < 0) onReply(); else onEcho();
+    start.current = null;
+    if (origin && origin.id === event.pointerId && Math.abs(event.clientX - origin.x) < 8 && Math.abs(event.clientY - origin.y) < 8) onDismiss();
   }
-  return <div className={`${className} ${dragging ? 'is-pulling' : ''}`} data-reply-card={String(item.id)} style={{ '--word-color': wordColorValues[item.color], '--card-squeeze-x': 1 - Math.abs(pull) * .035, '--card-squeeze-y': 1 - Math.abs(pull) * .025, '--reply-grow': Math.max(0, -pull), '--echo-grow': Math.max(0, pull) } as CSSProperties} tabIndex={0} role="group" aria-label={`${usernameLabel(item.username)}: swipe left to reply, right to echo. Keyboard: left or right arrow, Escape to close.`} onKeyDown={event => { if (event.target !== event.currentTarget) return; if (event.key === 'Escape') onDismiss(); if (event.key === 'ArrowLeft') { event.preventDefault(); onReply(); } if (event.key === 'ArrowRight') { event.preventDefault(); onEcho(); } }} onPointerDown={begin} onPointerMove={move} onPointerUp={finish} onPointerCancel={resetPull} onLostPointerCapture={resetPull}>{children}</div>;
+  return <div className={className} data-reply-card={String(item.id)} style={{ '--word-color': wordColorValues[item.color] } as CSSProperties} onKeyDown={event => { if (event.key === 'Escape') onDismiss(); }} onPointerDown={begin} onPointerUp={finish} onPointerCancel={() => { start.current = null; }}>{children}</div>;
 }
 
 type TodayTabProps = {
@@ -697,13 +671,13 @@ function TodayTab({ submitted, replacementMode, level, feed, feedLoading, now, s
   const demoFriends = [...friends].sort((left, right) => right.echoes - left.echoes);
   return (
     <section className="tab-view live-view">
-      <div className="today-toolbar"><div className="today-feed-summary"><span><i />{isSupabaseConfigured ? `${spokeCount} posted` : feedMode === 'Friends' ? '8 friends posted' : '1,284 posted'}</span><small>Swipe left to reply · Swipe right to echo</small></div><div className="today-controls"><div className="today-mode cozy-segments"><button className={feedMode === 'New' ? 'active' : ''} onClick={() => setFeedMode('New')}>New</button><button className={feedMode === 'Top' ? 'active' : ''} onClick={() => setFeedMode('Top')}>Top</button><button className={feedMode === 'Friends' ? 'active' : ''} onClick={() => setFeedMode('Friends')}>Friends</button></div><button className="feed-refresh" aria-label="Refresh today" title="Refresh" disabled={feedLoading} onClick={() => void refreshFeed()}><RefreshCw /></button></div></div>
+      <div className="today-toolbar"><div className="today-feed-summary"><span><i />{isSupabaseConfigured ? `${spokeCount} posted` : feedMode === 'Friends' ? '8 friends posted' : '1,284 posted'}</span><small>Tap reply to respond · Tap the waves to echo</small></div><div className="today-controls"><div className="today-mode cozy-segments"><button className={feedMode === 'New' ? 'active' : ''} onClick={() => setFeedMode('New')}>New</button><button className={feedMode === 'Top' ? 'active' : ''} onClick={() => setFeedMode('Top')}>Top</button><button className={feedMode === 'Friends' ? 'active' : ''} onClick={() => setFeedMode('Friends')}>Friends</button></div><button className="feed-refresh" aria-label="Refresh today" title="Refresh" disabled={feedLoading} onClick={() => void refreshFeed()}><RefreshCw /></button></div></div>
       {isSupabaseConfigured ? <div className={feedMode === 'Friends' ? 'friends-card-grid' : 'live-grid'}>{feedLoading ? <p className="feed-empty">Finding today&apos;s words…</p> : feed.length ? feed.map(item => {
         const displayItem = { ...item, reply_count: Math.max(replyCountOverrides[String(item.id)] ?? 0, item.reply_count) };
         const repliesOpen = replyTarget?.id === item.id;
-        const card = <FeedCard key={item.id} item={displayItem} ownWord={submitted} now={now} friendState={friendStateFor(item.user_id)} previewStrength={echoStrengths[String(item.id)]} pickerOpen={openEchoCardId === String(item.id)} repliesOpen={repliesOpen} onPickerChange={open => { if (open) setReplyTarget(null); setOpenEchoCardId(open ? String(item.id) : null); }} onFriendRequest={() => { setFriendRequestState('confirm'); setFriendTarget(item); }} onEcho={strength => setEchoStrength(item.id, strength)} />;
+        const card = <FeedCard key={item.id} item={displayItem} ownWord={submitted} now={now} friendState={friendStateFor(item.user_id)} previewStrength={echoStrengths[String(item.id)]} pickerOpen={openEchoCardId === String(item.id)} repliesOpen={repliesOpen} onPickerChange={open => { if (open) setReplyTarget(null); setOpenEchoCardId(open ? String(item.id) : null); }} onFriendRequest={() => { setFriendRequestState('confirm'); setFriendTarget(item); }} onOpenReply={() => { if (repliesOpen) setReplyTarget(null); else openReplies(displayItem); }} onEcho={strength => setEchoStrength(item.id, strength)} />;
         const visibleReplies = repliesFor(item);
-        return <SwipeWurdCard className={`wurd-cloud-card ${repliesOpen ? 'composing-reply' : ''}`} key={item.id} item={item} onDismiss={() => { setOpenEchoCardId(null); setReplyTarget(null); }} onReply={() => { if (!repliesOpen) openReplies(displayItem); }} onEcho={() => { if (item.word.toLocaleUpperCase() === submitted.toLocaleUpperCase()) return; setReplyTarget(null); setOpenEchoCardId(String(item.id)); }}>{card}<FloatingReplies replies={visibleReplies} currentUserId={currentUserId} />{repliesOpen && <ReplyThread key={item.id} onClose={() => setReplyTarget(current => current?.id === item.id ? null : current)} replies={replyRows} currentUserId={currentUserId} loading={replyLoading} sending={replySending} error={replyError} onSubmit={postReply} />}</SwipeWurdCard>;
+        return <WurdCard className={`wurd-cloud-card ${repliesOpen ? 'composing-reply' : ''}`} key={item.id} item={item} onDismiss={() => { setOpenEchoCardId(null); setReplyTarget(null); }}>{card}<FloatingReplies replies={visibleReplies} currentUserId={currentUserId} />{repliesOpen && <ReplyThread key={item.id} onClose={() => setReplyTarget(current => current?.id === item.id ? null : current)} replies={replyRows} currentUserId={currentUserId} loading={replyLoading} sending={replySending} error={replyError} onSubmit={postReply} />}</WurdCard>;
       }) : <p className="feed-empty">{feedMode === 'Friends' ? 'Your friends have not spoken yet.' : 'You are early. Today’s words will appear here.'}</p>}</div> : feedMode === 'Friends' ? <div className="friends-card-grid">{demoFriends.map(friend => <FriendCard key={friend.id} friend={friend} match={friend.word === submitted} echoed={echoed.includes(friend.id)} onEcho={() => void setEchoStrength(friend.id, echoed.includes(friend.id) ? 0 : 3)} />)}</div> : <div className="live-grid">{demoPeople.map((person, index) => <LiveCard key={`${person[0]}-${person[2]}`} person={person} echoed={echoed.includes(`live-${index}`)} onEcho={() => void setEchoStrength(`live-${index}`, echoed.includes(`live-${index}`) ? 0 : 3)} />)}</div>}
       <Dialog open={friendTarget !== null} onOpenChange={open => { if (!open && friendRequestState !== 'sending') setFriendTarget(null); }}><DialogContent className="friend-request-dialog"><DialogHeader><DialogTitle>{friendRequestState === 'sent' ? 'Request sent' : `Send friend request to ${usernameLabel(friendTarget?.username)}?`}</DialogTitle>{friendRequestState === 'sent' && <DialogDescription>They’ll see it in Friends.</DialogDescription>}</DialogHeader>{friendRequestState !== 'sent' && <div className="replacement-actions"><Button variant="outline" disabled={friendRequestState === 'sending'} onClick={() => setFriendTarget(null)}>Cancel</Button><Button disabled={friendRequestState === 'sending'} onClick={async () => { if (!friendTarget) return; setFriendRequestState('sending'); const sent = await sendFriendRequest(friendTarget.user_id); if (!sent) { setFriendRequestState('confirm'); return; } setFriendRequestState('sent'); window.setTimeout(() => setFriendTarget(null), 1100); }}>{friendRequestState === 'sending' ? 'Sending…' : 'Send'}</Button></div>}</DialogContent></Dialog>
     </section>

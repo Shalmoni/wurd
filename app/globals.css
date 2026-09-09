@@ -1708,43 +1708,7 @@ html, body, #root { height: 100%; overflow: hidden; overscroll-behavior: none; }
 .today-app .live-grid:has(.wurd-cloud-card),
 .today-app .friends-card-grid:has(.wurd-cloud-card) { align-content: start; }
 .wurd-cloud-card { position: relative; min-width: 0; min-height: 0; height: 100%; scroll-snap-align: start; touch-action: pan-y; }
-.wurd-cloud-card.is-pulling { user-select: none; }
-.today-app .wurd-cloud-card > .live-card {
-  height: 100%; isolation: isolate;
-  border-color: transparent; background: transparent; box-shadow: none;
-  --card-surface: white; --card-outline: #dfece7; --card-shadow: none;
-}
-.today-app .wurd-cloud-card > .live-card:hover { --card-surface: #fbfffd; --card-outline: #c5e9dc; }
-.today-app .wurd-cloud-card > .live-card.echoed {
-  --card-surface: color-mix(in srgb, var(--word-color, #00e695) 9%, white);
-  --card-outline: var(--word-color, #00e695); --card-shadow: 0 8px 22px rgba(0,201,130,.10);
-}
-.today-app .wurd-cloud-card > .live-card.exact-match { --card-surface: #f0fff9; --card-outline: #00e695; }
-.wurd-cloud-card > .live-card::before {
-  content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
-  border: 1px solid var(--card-outline); border-radius: inherit;
-  background: var(--card-surface); box-shadow: var(--card-shadow);
-  transform: scale(var(--card-squeeze-x, 1), var(--card-squeeze-y, 1));
-  transition: transform 260ms cubic-bezier(.2, .9, .25, 1.15), background .18s, border-color .18s;
-}
-.wurd-cloud-card .reply-count { --icon-grow: var(--reply-grow, 0); }
-.wurd-cloud-card .echo-count { --icon-grow: var(--echo-grow, 0); }
-.today-app .wurd-cloud-card .card-reactions > span {
-  gap: calc(6px + var(--icon-grow, 0) * 11px);
-  transition: gap 260ms ease;
-}
-.wurd-cloud-card .card-reactions svg {
-  transform: scale(calc(1 + var(--icon-grow, 0))); transform-origin: center bottom;
-  transition: transform 260ms cubic-bezier(.2, .9, .25, 1.15);
-}
-.wurd-cloud-card.is-pulling > .live-card::before,
-.today-app .wurd-cloud-card.is-pulling .card-reactions > span,
-.wurd-cloud-card.is-pulling .card-reactions svg { transition: none; }
-@media (prefers-reduced-motion: reduce) {
-  .wurd-cloud-card > .live-card::before,
-  .wurd-cloud-card .card-reactions svg { transform: none; transition: none; }
-  .today-app .wurd-cloud-card .card-reactions > span { gap: 6px; transition: none; }
-}
+.today-app .wurd-cloud-card > .live-card { height: 100%; }
 .today-app .wurd-cloud-card .live-card:active { transform: none; }
 .today-app .wurd-cloud-card .live-card .live-word {
   position: absolute; top: 40px; bottom: 36px; left: 20%; right: 20%;
