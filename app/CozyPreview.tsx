@@ -295,7 +295,7 @@ function FittedTodayWord({ word, emoji, color, wordStyle, animation }: { word: s
   return <PopoverTrigger ref={frame} className={`today-word ${wordLengthClass(word)} word-style-${wordStyle} word-animation-${animation}`} style={{ color: wordColorValues[color] }} aria-label={`${word}. Your current wurd.`}><span ref={text} className="today-word-text" style={{ '--word-scale': scale } as CSSProperties}>{word}{emoji && <span className="today-emoji"> {emoji}</span>}</span></PopoverTrigger>;
 }
 
-function BrandHeader({ tab, submitted, submittedAt, now, emoji, color, wordStyle, animation = 'still', echoes, xp, level, streak, username, memberSince, city, countryCode, avatarUrl, canReplace, onReplace }: { tab: Tab; submitted: string; submittedAt?: string | null; now: number; emoji: string | null; color: WordColor; wordStyle: WordStyle; animation?: WordAnimation; echoes: number; xp: number; level: number; streak: number; username?: string; memberSince?: string | null; city?: string | null; countryCode?: string | null; avatarUrl?: string | null; canReplace?: boolean; onReplace?: () => void }) {
+function BrandHeader({ tab, submitted, submittedAt, now, emoji, color, wordStyle, animation = 'still', echoes, xp, level, streak, username, memberSince, city, countryCode, avatarUrl, canReplace, onReplace, replies, repliesLoading }: { tab: Tab; submitted: string; submittedAt?: string | null; now: number; emoji: string | null; color: WordColor; wordStyle: WordStyle; animation?: WordAnimation; echoes: number; xp: number; level: number; streak: number; username?: string; memberSince?: string | null; city?: string | null; countryCode?: string | null; avatarUrl?: string | null; canReplace?: boolean; onReplace?: () => void; replies: WurdReply[]; repliesLoading: boolean }) {
   const levelProgress = levelProgressFor(xp, level);
   const multiplier = multiplierForStreak(streak);
   const topRow = <div className="today-brand-row"><div className="today-brand">wurd</div><div className="header-progress"><span className="level-label">LVL <b>{level}</b></span><Popover><PopoverTrigger className="header-xp" aria-label={`Level ${level}. ${levelProgress.earned} of ${levelProgress.required} XP`}><strong className="xp-total"><span className="xp-prefix">XP</span>{levelProgress.earned}</strong><span className="xp-progress"><em>{multiplier.toFixed(1)}×</em><i className="xp-bar"><b style={{ width: `${levelProgress.percent}%` }} /></i></span><span className="xp-streak"><Flame />{streak}</span></PopoverTrigger><PopoverContent side="bottom" sideOffset={7} className="echo-tooltip">{level >= 10 ? 'You reached the highest level.' : `${levelProgress.earned} / ${levelProgress.required} XP toward Level ${level + 1}. Post daily, keep your streak, and earn echoes.`}</PopoverContent></Popover></div></div>;
@@ -309,10 +309,25 @@ function BrandHeader({ tab, submitted, submittedAt, now, emoji, color, wordStyle
     <header className="today-app-header">
       {topRow}
       <div className="today-word-row"><Popover><FittedTodayWord word={submitted} emoji={emoji} color={color} wordStyle={wordStyle} animation={animation} /><PopoverContent side="bottom" sideOffset={7} className="echo-tooltip">This is your current Wurd. It stays live for up to 24 hours.</PopoverContent></Popover>{canReplace && <button className="replace-word-icon" type="button" aria-label="Post today's Wurd" title="A new day has started" onClick={onReplace}><Clock3 /></button>}</div>
-      <div className="today-meta-row"><p>{submittedAt ? timeLeft(submittedAt, now) : '24h left'} · {locationLabel(city, countryCode)}</p><EchoStat count={echoes} color={wordColorValues[color]} /></div>
+      <div className="today-meta-row"><p>{submittedAt ? timeLeft(submittedAt, now) : '24h left'} · {locationLabel(city, countryCode)}</p><div className="own-wurd-reactions"><OwnReplies key={submittedAt || submitted} replies={replies} loading={repliesLoading} /><EchoStat count={echoes} color={wordColorValues[color]} /></div></div>
     </header>
   );
   return <header className="cozy-header"><div className="cozy-logo">wurd</div></header>;
+}
+
+function OwnReplies({ replies, loading }: { replies: WurdReply[]; loading: boolean }) {
+  const [open, setOpen] = useState(false);
+  return <>
+    <button type="button" className="own-reply-button" aria-label={`View replies to your Wurd (${replies.length})`} aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen(true)}><MessageCircle /><span>{replies.length}</span></button>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogContent className="own-replies-dialog">
+        <DialogHeader><DialogTitle>Replies to your Wurd</DialogTitle><DialogDescription>What people said back.</DialogDescription></DialogHeader>
+        <div className="own-replies-list" aria-busy={loading}>
+          {loading ? <p className="own-replies-empty" role="status">Loading replies…</p> : replies.length ? <ul>{replies.map(reply => <li key={reply.id}><strong dir="auto">{reply.word}</strong><span>{usernameLabel(reply.username)}</span></li>)}</ul> : <p className="own-replies-empty">No replies yet.</p>}
+        </div>
+      </DialogContent>
+    </Dialog>
+  </>;
 }
 
 function EchoWaves({ strength = 0 }: { strength?: number }) {
@@ -1010,6 +1025,7 @@ export default function CozyPreview() {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<WurdProfile | null>(null);
   const [feed, setFeed] = useState<FeedWord[]>([]);
+  const [ownFeedWord, setOwnFeedWord] = useState<FeedWord | null>(null);
   const [spokeCount, setSpokeCount] = useState(0);
   const [history, setHistory] = useState<DiaryWord[]>([]);
   const [connections, setConnections] = useState<Friendship[]>([]);
@@ -1093,6 +1109,7 @@ export default function CozyPreview() {
       ...item,
       reply_count: isV22Preview() && new URLSearchParams(window.location.search).get('replies') === '20' ? 20 : item.reply_count ?? (isV22Preview() ? [10, 5, 2, 8, 1][index % 5] : 0),
     }));
+    setOwnFeedWord(((result.data || []) as FeedWord[]).find(item => item.user_id === activeUser.id) ?? null);
     setSpokeCount(rows[0]?.spoke_count || 0);
     const latestByUser = new Map<string, FeedWord>();
     for (const item of [...rows].sort((left, right) => new Date(right.created_at).getTime() - new Date(left.created_at).getTime())) {
@@ -1164,7 +1181,7 @@ export default function CozyPreview() {
         void loadAccount(session.user).catch(reason => setAppError(readableError(reason, 'Could not load your account.')));
         void loadConnections(session.user).catch(reason => console.error('Could not load friendships', reason));
       }
-      else { setProfile(null); setProfilePhotoPreview(''); setSubmittedState(''); setSubmittedAt(null); setSubmittedLocalDate(null); setFeed([]); setHistory([]); setConnections([]); }
+      else { setProfile(null); setProfilePhotoPreview(''); setSubmittedState(''); setSubmittedAt(null); setSubmittedLocalDate(null); setFeed([]); setOwnFeedWord(null); setHistory([]); setConnections([]); }
     });
     return () => { live = false; listener.subscription.unsubscribe(); };
   }, []);
@@ -1540,7 +1557,7 @@ export default function CozyPreview() {
   const visibleFeed = levelTenPreview ? [previewWord, ...feed.filter(item => item.id !== previewWord.id)] : feed;
   const ownEchoes = history.find(item => item.local_date === submittedLocalDate)?.echo_count ?? (activeSubmitted ? 37 + activeSubmitted.length * 11 : 0);
   return (
-    <main className={`cozy-stage fixed-app active-${tab} ${(headerSubmitted || tab === 'you') ? 'today-app' : ''}`}><section className="cozy-shell"><BrandHeader tab={tab} submitted={headerSubmitted} submittedAt={submittedAt} now={clockNow} emoji={submittedEmoji} color={submittedColor} wordStyle={submittedWordStyle} animation={submittedAnimation} avatarUrl={level >= 5 ? profilePhotoPreview : null} echoes={ownEchoes} xp={xp} level={level} streak={streak} username={profile?.username} memberSince={profile?.created_at} city={profile?.city} countryCode={profile?.country_code} canReplace={tab === 'today' && canReplace && !replacementMode} onReplace={() => setReplacementStep('explain')} /><div className="cozy-main">
+    <main className={`cozy-stage fixed-app active-${tab} ${(headerSubmitted || tab === 'you') ? 'today-app' : ''}`}><section className="cozy-shell"><BrandHeader tab={tab} submitted={headerSubmitted} submittedAt={submittedAt} now={clockNow} emoji={submittedEmoji} color={submittedColor} wordStyle={submittedWordStyle} animation={submittedAnimation} avatarUrl={level >= 5 ? profilePhotoPreview : null} echoes={ownEchoes} replies={ownFeedWord?.user_id === user?.id && ownFeedWord?.created_at === submittedAt ? ownFeedWord.replies ?? [] : []} repliesLoading={feedLoading} xp={xp} level={level} streak={streak} username={profile?.username} memberSince={profile?.created_at} city={profile?.city} countryCode={profile?.country_code} canReplace={tab === 'today' && canReplace && !replacementMode} onReplace={() => setReplacementStep('explain')} /><div className="cozy-main">
       {appError && <button className="app-error" onClick={() => setAppError('')}>{appError}</button>}
       {tab === 'today' && <TodayTab submitted={activeSubmitted} replacementMode={replacementMode} level={level} feed={visibleFeed.filter(item => isWithinTodayWindow(item.created_at, clockNow))} feedLoading={feedLoading} now={clockNow} spokeCount={levelTenPreview ? spokeCount + 1 : spokeCount} feedMode={feedMode} setFeedMode={setFeedMode} setSubmitted={postWord} refreshFeed={async () => { if (!user) { window.location.reload(); return; } setAppError(''); try { await Promise.all([loadAccount(user), loadFeed(feedMode, user)]); } catch (reason) { setAppError(readableError(reason, 'Could not refresh today.')); } }} friendStateFor={friendStateFor} sendFriendRequest={sendFriendRequest} echoStrengths={echoStrengths} echoed={echoed} setEchoStrength={setEchoStrength} currentUserId={user?.id || null} currentUsername={profile?.username || 'you'} />}
       {tab === 'world' && <WorldTab />}

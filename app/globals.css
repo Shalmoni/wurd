@@ -1248,6 +1248,18 @@ html, body, #root { height: 100%; overflow: hidden; overscroll-behavior: none; }
   white-space: nowrap;
 }
 .today-meta-row > .echo-count { flex: 0 0 auto; }
+.own-wurd-reactions { display: flex; align-items: center; flex: 0 0 auto; gap: 12px; }
+.own-reply-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 44px; min-width: 44px; padding: 4px; border: 0; border-radius: 10px; background: transparent; color: #14201c; font-size: 18px; font-weight: 750; cursor: pointer; }
+.own-reply-button:hover, .own-reply-button:focus-visible { background: #e7fff5; }
+.own-replies-dialog { max-height: min(70dvh, 560px); grid-template-rows: auto minmax(0, 1fr); border-radius: 22px; }
+.own-replies-dialog [data-slot='dialog-header'] { padding-right: 26px; }
+.own-replies-list { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.own-replies-list ul { list-style: none; margin: 0; padding: 0; }
+.own-replies-list li { display: flex; flex-direction: column; gap: 4px; padding: 14px 4px; border-bottom: 1px solid #e3eee9; }
+.own-replies-list li:last-child { border-bottom: 0; }
+.own-replies-list strong { color: #00b979; font-size: 22px; line-height: 1.25; overflow-wrap: anywhere; }
+.own-replies-list li > span { color: #536d62; font-size: 14px; overflow-wrap: anywhere; }
+.own-replies-empty { padding: 20px 4px; color: #647970; text-align: center; }
 .today-toolbar { min-height: 44px; flex-basis: 44px; }
 .today-feed-summary > span { font-size: 20px; }
 .today-feed-summary > span i { width: 9px; height: 9px; flex-basis: 9px; }
