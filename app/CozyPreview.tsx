@@ -18,6 +18,7 @@ import { Avatar, AvatarImage } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Slider } from '@/components/ui/slider';
+import { createAccountLoadGuard, isSavedWurdActive } from '@/lib/posting-state';
 import { isSupabaseConfigured, supabase, type FeedWord, type WordColor, type WordStyle, type WurdProfile, type WurdReply } from '@/lib/supabase';
 import {
   disablePushNotifications,
@@ -1050,20 +1051,25 @@ export default function CozyPreview() {
   const [notificationBusy, setNotificationBusy] = useState(false);
   const [notificationError, setNotificationError] = useState('');
   const friendSearchTimer = useRef<number | null>(null);
+  const accountLoadGuard = useRef(createAccountLoadGuard());
 
   async function loadAccount(activeUser: User) {
     if (!supabase) return;
+    const request = accountLoadGuard.current.invalidate();
     setFeedLoading(true);
     try {
       const [profileResult, historyResult] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', activeUser.id).single(),
         supabase.rpc('my_word_history', { p_limit: 14 }),
       ]);
-      let wordResult = await supabase.from('daily_words').select('id, local_date, word, emoji, color, word_style, animation, created_at').eq('user_id', activeUser.id).gt('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()).lte('created_at', new Date().toISOString()).order('created_at', { ascending: false }).limit(1);
+      // Timestamps are assigned by the server; do not reject a saved post just
+      // because this device's clock is slightly behind the server.
+      let wordResult = await supabase.from('daily_words').select('id, local_date, word, emoji, color, word_style, animation, created_at').eq('user_id', activeUser.id).gt('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()).order('created_at', { ascending: false }).limit(1);
       // Keeps localhost usable until the V2 database migration is released.
       if (wordResult.error && /animation/i.test(wordResult.error.message)) {
-        wordResult = await supabase.from('daily_words').select('id, local_date, word, emoji, color, word_style, created_at').eq('user_id', activeUser.id).gt('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()).lte('created_at', new Date().toISOString()).order('created_at', { ascending: false }).limit(1) as typeof wordResult;
+        wordResult = await supabase.from('daily_words').select('id, local_date, word, emoji, color, word_style, created_at').eq('user_id', activeUser.id).gt('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()).order('created_at', { ascending: false }).limit(1) as typeof wordResult;
       }
+      if (!accountLoadGuard.current.isCurrent(request)) return;
       if (profileResult.error) throw profileResult.error;
       if (wordResult.error) throw wordResult.error;
       if (historyResult.error) throw historyResult.error;
@@ -1095,7 +1101,7 @@ export default function CozyPreview() {
         setSubmittedLocalDate(null);
       }
     } finally {
-      setFeedLoading(false);
+      if (accountLoadGuard.current.isCurrent(request)) setFeedLoading(false);
     }
   }
 
@@ -1181,7 +1187,7 @@ export default function CozyPreview() {
         void loadAccount(session.user).catch(reason => setAppError(readableError(reason, 'Could not load your account.')));
         void loadConnections(session.user).catch(reason => console.error('Could not load friendships', reason));
       }
-      else { setProfile(null); setProfilePhotoPreview(''); setSubmittedState(''); setSubmittedAt(null); setSubmittedLocalDate(null); setFeed([]); setOwnFeedWord(null); setHistory([]); setConnections([]); }
+      else { accountLoadGuard.current.invalidate(); setProfile(null); setProfilePhotoPreview(''); setSubmittedState(''); setSubmittedAt(null); setSubmittedLocalDate(null); setFeed([]); setOwnFeedWord(null); setHistory([]); setConnections([]); }
     });
     return () => { live = false; listener.subscription.unsubscribe(); };
   }, []);
@@ -1270,17 +1276,23 @@ export default function CozyPreview() {
         result = await supabase.rpc('post_daily_word', { p_word: post.word, p_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, p_emoji: post.emoji, p_color: post.color, p_city: profile?.city || null, p_country_code: profile?.country_code || null, p_word_style: post.wordStyle });
       }
       if (result.error) throw result.error;
-      const postedId = Number((result.data as { id?: number } | null)?.id);
-      setSubmittedState(post.word);
-      setSubmittedAt(new Date().toISOString());
-      setSubmittedLocalDate(localDayKey());
-      setSubmittedEmoji(post.emoji);
-      setSubmittedColor(post.color);
-      setSubmittedWordStyle(post.wordStyle);
-      setSubmittedAnimation(post.animation || 'still');
-      await loadAccount(user);
-      if (Number.isInteger(postedId)) void dispatchPushEvent('friend_word', postedId);
+      const savedWord = result.data as DiaryWord;
+      const postedId = Number(savedWord.id);
+      // Commit the successful save before refreshing XP. A level-up or a late
+      // pre-post account response must never reopen the posting form.
+      accountLoadGuard.current.invalidate();
+      setClockNow(Date.now());
+      setSubmittedState(savedWord.word);
+      setSubmittedAt(savedWord.created_at);
+      setSubmittedLocalDate(savedWord.local_date);
+      setSubmittedEmoji(savedWord.emoji);
+      setSubmittedColor(savedWord.color);
+      setSubmittedWordStyle(savedWord.word_style || 'bold');
+      setSubmittedAnimation(savedWord.animation || 'still');
       setReplacementMode(false);
+      if (Number.isInteger(postedId)) void dispatchPushEvent('friend_word', postedId);
+      // Refresh failures are not posting failures: the Wurd is already saved.
+      void loadAccount(user).catch(() => setAppError('Your Wurd was posted. Could not refresh your account—tap refresh to try again.'));
       return;
     }
     setSubmittedState(post.word);
@@ -1518,7 +1530,7 @@ export default function CozyPreview() {
   const xp = levelTenPreview ? 5380 : realXp;
   const level = levelForXp(xp);
   const streak = profile?.streak_days ?? 12;
-  const activeSubmitted = submittedAt && isWithinTodayWindow(submittedAt, clockNow) ? submitted : '';
+  const activeSubmitted = isSavedWurdActive(submittedAt, clockNow) ? submitted : '';
   const hasPostedToday = isSupabaseConfigured ? history.some(item => item.local_date === dayKey) : Boolean(window.localStorage.getItem(`wurd:daily:${dayKey}`));
   const replacementPreview = import.meta.env.DEV && ['replacement', 'level10'].includes(new URLSearchParams(window.location.search).get('preview') || '');
   const canReplace = Boolean(activeSubmitted && (replacementPreview || (submittedLocalDate && submittedLocalDate !== dayKey && !hasPostedToday)));
