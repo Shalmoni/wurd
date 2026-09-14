@@ -1,13 +1,15 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { ArrowLeft, ArrowRight, Check, CircleUserRound, Gamepad2, LockKeyhole, Send, Sun, UsersRound } from 'lucide-react';
-import { answerBoard, israelRound, menuTimeLeft, normalizeColor, roundForReview } from '../lib/category-game';
+import { answerBoard, israelRound, menuTimeLeft, normalizeAnswer, roundForReview } from '../lib/category-game';
+import { categoryForRound } from '../lib/category-schedule';
 import './category-prototype.css';
 
-const demoAnswers = ['red', 'red', 'white', 'blue'];
-const demoNames: Record<string, string[]> = { red: ['maya', 'alex'], white: ['sam'], blue: ['noah'] };
+// No invented answers for scheduled categories. This remains an isolated demo.
+const demoAnswers: string[] = [];
+const demoNames: Record<string, string[]> = {};
 // A new restart token opens a fresh local demo without erasing earlier runs.
-const keyFor = (id: string) => `wurd:category-prototype:${id}${new URLSearchParams(window.location.search).get('restart') ? `:run:${new URLSearchParams(window.location.search).get('restart')}` : ''}`;
-function savedAnswer(id: string) { try { return normalizeColor(localStorage.getItem(keyFor(id)) || ''); } catch { return null; } }
+const keyFor = (id: string) => `wurd:category-prototype:schedule-v1:${id}${new URLSearchParams(window.location.search).get('restart') ? `:run:${new URLSearchParams(window.location.search).get('restart')}` : ''}`;
+function savedAnswer(id: string) { try { return normalizeAnswer(localStorage.getItem(keyFor(id)) || ''); } catch { return null; } }
 function initialRound() {
   try { return roundForReview(Date.now(), localStorage.getItem(keyFor('review-round'))); }
   catch { return israelRound(Date.now()); }
@@ -19,6 +21,7 @@ function remaining(deadline: number, now: number) {
 
 export default function CategoryPrototype() {
   const [round, setRound] = useState(initialRound);
+  const category = categoryForRound(round.id);
   const [view, setView] = useState<'menu' | 'game'>('menu');
   const [now, setNow] = useState(Date.now);
   const [answer, setAnswer] = useState(() => savedAnswer(round.id));
@@ -40,8 +43,8 @@ export default function CategoryPrototype() {
     event.preventDefault();
     if (Date.now() >= round.endsAt) { setNow(Date.now()); return; }
     if (answer) return;
-    const normalized = normalizeColor(draft);
-    if (!normalized) { setError('Try a color like red, blue, coral, or gray. This demo has a small accepted-color list.'); return; }
+    const normalized = normalizeAnswer(draft);
+    if (!normalized) { setError('Enter one word, up to 30 letters.'); return; }
     try { localStorage.setItem(keyFor(round.id), normalized); } catch { /* In-memory demo still works. */ }
     setAnswer(normalized);
     setDraft(''); setError('');
@@ -73,8 +76,8 @@ export default function CategoryPrototype() {
       </div>
       <section className={`category-question ${scene}`}>
         <div className="category-eyebrow"><span>THIS ROUND</span></div>
-        <h2>Name a color.</h2><p>Choose the answer most people will pick.</p>
-        {scene === 'answer' && <form onSubmit={submit}><label htmlFor="category-answer">Your guess</label><div className="category-input"><input id="category-answer" value={draft} onChange={event => { setDraft(event.target.value); setError(''); }} placeholder="Type a color…" maxLength={30} autoComplete="off" /><button type="submit" aria-label="Lock in my answer" disabled={!draft.trim()}><Send /></button></div>{error && <p className="category-error" role="alert">{error}</p>}<small><LockKeyhole /> One answer. Locked until the reveal.</small></form>}
+        <h2>{category.prompt}</h2><p>Choose the answer most people will pick.</p>
+        {scene === 'answer' && <form onSubmit={submit}><label htmlFor="category-answer">Your guess</label><div className="category-input"><input id="category-answer" value={draft} onChange={event => { setDraft(event.target.value); setError(''); }} placeholder="Type your answer…" maxLength={30} autoComplete="off" spellCheck lang="en" /><button type="submit" aria-label="Lock in my answer" disabled={!draft.trim()}><Send /></button></div>{error && <p className="category-error" role="alert">{error}</p>}<small><LockKeyhole /> One answer. Locked until the reveal.</small></form>}
         {scene === 'waiting' && <div className="category-locked"><span><Check /> YOUR ANSWER IS LOCKED</span><strong>{shownAnswer?.toUpperCase()}</strong></div>}
         {scene === 'results' && <div className="category-score"><div><span>{shownAnswer ? 'YOU PICKED' : 'YOU SAT THIS ONE OUT'}</span>{shownAnswer && <strong>{shownAnswer.toUpperCase()}</strong>}</div><div><b>+{points}</b><span>GAME {points === 1 ? 'POINT' : 'POINTS'}</span></div></div>}
       </section>

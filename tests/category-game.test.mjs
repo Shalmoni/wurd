@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { israelRound, normalizeColor, answerBoard, menuTimeLeft, roundForReview } from '../lib/category-game.ts';
+import { israelRound, normalizeAnswer, answerBoard, menuTimeLeft, roundForReview } from '../lib/category-game.ts';
 test('Israel 3 PM boundary has no gap or overlap', () => {
   const boundary = Date.parse('2026-09-14T12:00:00Z');
   assert.equal(israelRound(boundary - 1).endsAt, boundary);
@@ -16,10 +16,13 @@ test('DST follows Israel wall-clock boundaries', () => {
 test('score equals group size including the player', () => {
   assert.deepEqual(answerBoard(['red', 'red', 'red', 'white', 'blue']), [{ answer: 'red', count: 3 }, { answer: 'blue', count: 1 }, { answer: 'white', count: 1 }]);
 });
-test('normalize spelling variants and reject non-colors', () => {
-  assert.equal(normalizeColor(' RED '), 'red');
-  assert.equal(normalizeColor('grey'), 'gray');
-  assert.equal(normalizeColor('pizza'), null);
+test('normalize answers without restricting them to a category', () => {
+  assert.equal(normalizeAnswer(' RED '), 'red');
+  assert.equal(normalizeAnswer('table'), 'table');
+  assert.equal(normalizeAnswer('pizza'), 'pizza');
+  assert.equal(normalizeAnswer('two words'), null);
+  assert.equal(normalizeAnswer(''), null);
+  assert.equal(normalizeAnswer('a'.repeat(31)), null);
 });
 test('menu uses rounded hours or minutes below one hour, then Ended', () => {
   assert.equal(menuTimeLeft(43_200_000, 0), '12h left');

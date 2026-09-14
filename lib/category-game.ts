@@ -13,10 +13,10 @@ export function israelRound(now: number) {
   const end = boundaries.find(b => b.time > now)!;
   return { id: start.key, startsAt: start.time, endsAt: end.time, revealLabel: end.hour === 15 ? '3 PM' : '3 AM' };
 }
-const colors = ['red', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink', 'white', 'black', 'gray', 'brown', 'gold', 'silver', 'coral', 'teal', 'turquoise', 'violet', 'indigo', 'beige', 'maroon', 'navy', 'lime', 'cyan', 'magenta'];
-export function normalizeColor(input: string): string | null {
-  const value = input.trim().toLowerCase().replace(/^grey$/, 'gray');
-  return colors.includes(value) ? value : null;
+export function normalizeAnswer(input: string): string | null {
+  const value = input.normalize('NFC').trim().toLowerCase().replaceAll('’', "'");
+  // Validate one word, not membership in a category. Spelling is not guessed here.
+  return value.length <= 30 && /^[\p{L}\p{M}]+(?:['-][\p{L}\p{M}]+)*$/u.test(value) ? value : null;
 }
 
 export function roundForReview(now: number, savedStart: string | null) {
