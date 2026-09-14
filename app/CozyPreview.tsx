@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactNode, SyntheticEvent } from 'react';
 import type { User } from '@supabase/supabase-js';
 import {
   Bell, Check, CircleUserRound, Clock3, Flame, Globe2, Lock, LogOut,
   MapPin, MessageCircle, RefreshCw, Search, Send, Settings, Share2, Sun, UserPlus, UsersRound,
-  Trophy,
+  Trophy, Gamepad2,
 } from 'lucide-react';
 import { geoMercator, geoNaturalEarth1, geoPath } from 'd3-geo';
 import { feature } from 'topojson-client';
@@ -31,7 +31,8 @@ import {
   type PushStatus,
 } from '@/lib/push-notifications';
 
-type Tab = 'today' | 'world' | 'you';
+const PlayTab = lazy(() => import('./PlayTab'));
+type Tab = 'today' | 'world' | 'play' | 'you';
 type Scope = 'World' | 'Israel' | 'Nearby';
 type FeedMode = 'New' | 'Top' | 'Friends';
 type CardFriendState = 'self' | 'none' | 'outgoing' | 'incoming' | 'friend';
@@ -300,6 +301,7 @@ function BrandHeader({ tab, submitted, submittedAt, now, emoji, color, wordStyle
   const levelProgress = levelProgressFor(xp, level);
   const multiplier = multiplierForStreak(streak);
   const topRow = <div className="today-brand-row"><div className="today-brand">wurd</div><div className="header-progress"><span className="level-label">LVL <b>{level}</b></span><Popover><PopoverTrigger className="header-xp" aria-label={`Level ${level}. ${levelProgress.earned} of ${levelProgress.required} XP`}><strong className="xp-total"><span className="xp-prefix">XP</span>{levelProgress.earned}</strong><span className="xp-progress"><em>{multiplier.toFixed(1)}×</em><i className="xp-bar"><b style={{ width: `${levelProgress.percent}%` }} /></i></span><span className="xp-streak"><Flame />{streak}</span></PopoverTrigger><PopoverContent side="bottom" sideOffset={7} className="echo-tooltip">{level >= 10 ? 'You reached the highest level.' : `${levelProgress.earned} / ${levelProgress.required} XP toward Level ${level + 1}. Post daily, keep your streak, and earn echoes.`}</PopoverContent></Popover></div></div>;
+  if (tab === 'play') return <header className="play-brand-header"><div className="today-brand">wurd</div></header>;
   if (tab === 'you') return (
     <header className="today-app-header you-identity-header">
       {topRow}
@@ -1008,11 +1010,14 @@ function CityPicker({ id, query, selected, onQueryChange, onSelect }: { id: stri
 }
 
 const tabs: { id: Tab; label: string; icon: typeof Sun }[] = [
-  { id: 'today', label: 'Today', icon: Sun }, { id: 'world', label: 'World', icon: Globe2 }, { id: 'you', label: 'You', icon: CircleUserRound },
+  { id: 'today', label: 'Today', icon: Sun }, { id: 'play', label: 'Play', icon: Gamepad2 }, { id: 'you', label: 'You', icon: CircleUserRound },
 ];
 
 export default function CozyPreview() {
-  const [tab, setTab] = useState<Tab>('today');
+  const [tab, setTab] = useState<Tab>(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('tab') === 'play' || params.get('preview') === 'play' ? 'play' : 'today';
+  });
   const [dayKey, setDayKey] = useState(localDayKey);
   const [submitted, setSubmittedState] = useState('');
   const [submittedAt, setSubmittedAt] = useState<string | null>(null);
@@ -1573,6 +1578,7 @@ export default function CozyPreview() {
       {appError && <button className="app-error" onClick={() => setAppError('')}>{appError}</button>}
       {tab === 'today' && <TodayTab submitted={activeSubmitted} replacementMode={replacementMode} level={level} feed={visibleFeed.filter(item => isWithinTodayWindow(item.created_at, clockNow))} feedLoading={feedLoading} now={clockNow} spokeCount={levelTenPreview ? spokeCount + 1 : spokeCount} feedMode={feedMode} setFeedMode={setFeedMode} setSubmitted={postWord} refreshFeed={async () => { if (!user) { window.location.reload(); return; } setAppError(''); try { await Promise.all([loadAccount(user), loadFeed(feedMode, user)]); } catch (reason) { setAppError(readableError(reason, 'Could not refresh today.')); } }} friendStateFor={friendStateFor} sendFriendRequest={sendFriendRequest} echoStrengths={echoStrengths} echoed={echoed} setEchoStrength={setEchoStrength} currentUserId={user?.id || null} currentUsername={profile?.username || 'you'} />}
       {tab === 'world' && <WorldTab />}
+      {tab === 'play' && <Suspense fallback={<p className="play-loading" role="status">Opening the games…</p>}><PlayTab key={user?.id || 'signed-out'} /></Suspense>}
       {tab === 'you' && <YouTab history={history} incomingRequestCount={incomingRequestCount} onOpenPanel={panel => { setAppError(''); setSearchResults([]); setYouPanel(panel); if (panel === 'friends') void loadConnections(user || undefined).catch(reason => setAppError(readableError(reason, 'Could not load friends.'))); }} />}
     </div><nav className="cozy-nav" aria-label="App navigation">{tabs.map(item => {
       const locked = item.id === 'world';
