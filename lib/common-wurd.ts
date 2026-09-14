@@ -9,6 +9,9 @@ export type CommonWurdState = {
   results: { answer: string; count: number; usernames: string[] }[];
   points: number;
   total_points: number;
+  xp_awarded: number;
+  total_game_xp: number;
+  profile_xp: number;
 };
 
 export async function commonWurdRequest(

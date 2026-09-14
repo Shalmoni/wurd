@@ -7,7 +7,7 @@ import './category-prototype.css';
 
 type Review = { original: string; chosen: string; suggestions: string[]; known: boolean; warning?: string };
 
-export default function PlayTab() {
+export default function PlayTab({ onXpChanged }: { onXpChanged: (xp: number) => void }) {
   const [model, setModel] = useState<CommonWurdState | null>(null);
   const [view, setView] = useState<'menu' | 'game'>('menu');
   const [draft, setDraft] = useState('');
@@ -29,11 +29,12 @@ export default function PlayTab() {
     anchor.current = { server: Date.parse(data.server_now), local: performance.now() };
     setNow(anchor.current.server);
     setModel(data);
+    if (Number.isFinite(data.profile_xp)) onXpChanged(data.profile_xp);
     if (changedRound || data.my_answer || data.ended) {
       spellingAttempt.current++;
       setReview(null); setDraft(''); setChecking(false);
     }
-  }, []);
+  }, [onXpChanged]);
 
   const load = useCallback(async () => {
     if (actionBusy.current) return;
@@ -156,16 +157,16 @@ export default function PlayTab() {
           <div className="category-confirm-actions"><button type="button" disabled={busy} onClick={() => setReview(null)}>Go back</button><button type="button" disabled={busy} onClick={() => void act('submit_common_wurd')}>{busy ? 'Saving…' : 'Confirm answer'}</button></div>
         </div>)}
         {!closed && model.my_answer && <div className="category-locked"><span><Check /> YOUR ANSWER IS LOCKED</span><strong>{model.my_answer.toUpperCase()}</strong></div>}
-        {model.ended && <div className="category-score"><div><span>{model.my_answer ? 'YOU PICKED' : 'YOU SAT THIS ONE OUT'}</span>{model.my_answer && <strong>{model.my_answer.toUpperCase()}</strong>}</div><div><b>+{model.points}</b><span>GAME {model.points === 1 ? 'POINT' : 'POINTS'}</span></div></div>}
+        {model.ended && <div className="category-score"><div><span>{model.my_answer ? 'YOU PICKED' : 'YOU SAT THIS ONE OUT'}</span>{model.my_answer && <strong>{model.my_answer.toUpperCase()}</strong>}</div><div><b>+{model.xp_awarded}</b><span>XP</span></div></div>}
       </section>
       {model.ended ? <section className="category-results">
         <div className="category-section-title"><h2>The people have spoken.</h2><span>{model.answer_count} answers</span></div>
         {model.results.length ? <ol>{model.results.map((row, index) => <li key={row.answer} className={row.answer === model.my_answer ? 'your-answer' : ''}>
           <span className="category-rank">{String(index + 1).padStart(2, '0')}</span>
           <div><strong>{row.answer.toUpperCase()}{row.answer === model.my_answer && <small>YOU</small>}</strong><p>{row.usernames.map(name => `@${name}`).join(' · ')}</p><i><b style={{ width: `${row.count / model.answer_count * 100}%` }} /></i></div>
-          <span className="category-row-score"><b>{row.count}</b><small>{row.count === 1 ? 'point each' : 'points each'}</small></span>
+          <span className="category-row-score"><b>{row.count}</b><small>XP each</small></span>
         </li>)}</ol> : <p>No answers this round.</p>}
-        <p className="category-explanation">{model.total_points} game points total · Separate from Wurd XP</p>
+        <p className="category-explanation">{model.total_game_xp} XP earned playing · Counts toward your Wurd level</p>
         <button className="category-next" disabled={busy} onClick={() => void act('acknowledge_common_wurd')}>Continue to next round <ArrowRight /></button>
       </section> : closed ? <p role="status">{busy ? 'Opening the results…' : 'Results are ready to load.'}</p>
         : <section className="category-hidden"><div><UsersRound /><strong>{model.answer_count} {model.answer_count === 1 ? 'answer' : 'answers'} sealed</strong></div><p>No peeking. Everyone’s answers open together.</p></section>}

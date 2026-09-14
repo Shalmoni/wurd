@@ -23,6 +23,7 @@ begin
   assert blocked, 'Missing identity accepted';
 
   perform set_config('request.jwt.claim.sub', users[1]::text, true);
+  perform private.settle_common_wurd_xp();
   select xp into old_xp from public.profiles where id = users[1];
   -- Work only on current-round rows in this rollback-only transaction.
   select id into current_id from private.common_wurd_rounds where starts_at <= clock_timestamp() and ends_at > clock_timestamp();
@@ -45,14 +46,14 @@ begin
   assert blocked, 'Round skipped before reveal';
   perform set_config('role', 'none', true);
   assert (select count(*) from private.common_wurd_answers where round_id = current_id and user_id = users[1]) = 1, 'Duplicate submission';
-  assert (select xp from public.profiles where id = users[1]) = old_xp, 'Game changed Wurd XP';
+  assert (select xp from public.profiles where id = users[1]) = old_xp, 'XP awarded before reveal';
 
   perform set_config('request.jwt.claim.sub', users[2]::text, true);
   insert into private.common_wurd_progress values(users[2], current_id) on conflict(user_id) do update set round_id = excluded.round_id;
   state := public.common_wurd_state();
   assert state->>'my_answer' is null and state->'results' = '[]'::jsonb, 'Other player answer leaked';
 
-  insert into private.common_wurd_rounds values(test_round, 'Name a color.', clock_timestamp() - interval '13 hours', clock_timestamp() - interval '1 hour');
+  insert into private.common_wurd_rounds(id, prompt, starts_at, ends_at) values(test_round, 'Name a color.', clock_timestamp() - interval '13 hours', clock_timestamp() - interval '1 hour');
   insert into private.common_wurd_answers(round_id, user_id, answer) values(test_round, users[1], 'red'), (test_round, users[2], 'red'), (test_round, users[3], 'blue');
   update private.common_wurd_progress set round_id = test_round where user_id in (users[1],users[2]);
   state := public.common_wurd_state();

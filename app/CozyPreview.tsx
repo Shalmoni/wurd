@@ -1,6 +1,6 @@
 'use client';
 
-import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactNode, SyntheticEvent } from 'react';
 import type { User } from '@supabase/supabase-js';
 import {
@@ -1030,6 +1030,9 @@ export default function CozyPreview() {
   const [echoStrengths, setEchoStrengths] = useState<Record<string, number>>({});
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<WurdProfile | null>(null);
+  const syncGameXp = useCallback((xp: number) => {
+    setProfile(current => current && current.xp !== xp ? { ...current, xp, level: levelForXp(xp) } : current);
+  }, []);
   const [feed, setFeed] = useState<FeedWord[]>([]);
   const [ownFeedWord, setOwnFeedWord] = useState<FeedWord | null>(null);
   const [spokeCount, setSpokeCount] = useState(0);
@@ -1578,7 +1581,7 @@ export default function CozyPreview() {
       {appError && <button className="app-error" onClick={() => setAppError('')}>{appError}</button>}
       {tab === 'today' && <TodayTab submitted={activeSubmitted} replacementMode={replacementMode} level={level} feed={visibleFeed.filter(item => isWithinTodayWindow(item.created_at, clockNow))} feedLoading={feedLoading} now={clockNow} spokeCount={levelTenPreview ? spokeCount + 1 : spokeCount} feedMode={feedMode} setFeedMode={setFeedMode} setSubmitted={postWord} refreshFeed={async () => { if (!user) { window.location.reload(); return; } setAppError(''); try { await Promise.all([loadAccount(user), loadFeed(feedMode, user)]); } catch (reason) { setAppError(readableError(reason, 'Could not refresh today.')); } }} friendStateFor={friendStateFor} sendFriendRequest={sendFriendRequest} echoStrengths={echoStrengths} echoed={echoed} setEchoStrength={setEchoStrength} currentUserId={user?.id || null} currentUsername={profile?.username || 'you'} />}
       {tab === 'world' && <WorldTab />}
-      {tab === 'play' && <Suspense fallback={<p className="play-loading" role="status">Opening the games…</p>}><PlayTab key={user?.id || 'signed-out'} /></Suspense>}
+      {tab === 'play' && <Suspense fallback={<p className="play-loading" role="status">Opening the games…</p>}><PlayTab key={user?.id || 'signed-out'} onXpChanged={syncGameXp} /></Suspense>}
       {tab === 'you' && <YouTab history={history} incomingRequestCount={incomingRequestCount} onOpenPanel={panel => { setAppError(''); setSearchResults([]); setYouPanel(panel); if (panel === 'friends') void loadConnections(user || undefined).catch(reason => setAppError(readableError(reason, 'Could not load friends.'))); }} />}
     </div><nav className="cozy-nav" aria-label="App navigation">{tabs.map(item => {
       const locked = item.id === 'world';
