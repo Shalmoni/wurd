@@ -3,11 +3,12 @@
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactNode, SyntheticEvent } from 'react';
 import type { User } from '@supabase/supabase-js';
-import PlayNavButton from './PlayNavButton';
+import PlayNavButton, { PlayIntroduction } from './PlayNavButton';
+import { levelDefinitions, levelForXp, levelProgressFor } from '../lib/progression';
 import AccountTools, { CardSafety, InviteButton, PrivacyNote, RecentXp } from './AccountTools';
 import { arrangeReplies, cloudReplies, type ReplyBox } from '../lib/reply-layout';
 import {
-  Bell, Check, CircleUserRound, Clock3, Flame, Globe2, Lock, LogOut,
+  ArrowLeft, ArrowRight, X, Plus, Bell, Check, CircleUserRound, Clock3, Flame, Globe2, Lock, LogOut,
   MapPin, MessageCircle, RefreshCw, Search, Send, Settings, Share2, Sun, UserPlus, UsersRound,
   Trophy, Gamepad2,
 } from 'lucide-react';
@@ -99,18 +100,6 @@ const animationChoices: { value: WordAnimation; label: string }[] = [
   { value: 'float', label: 'Float' }, { value: 'shimmer', label: 'Shimmer' },
 ];
 const diaryLaunchDate = '2026-09-03';
-const levelDefinitions = [
-  { level: 1, threshold: 0, reward: 'Core Wurd' },
-  { level: 2, threshold: 100, reward: 'New fonts' },
-  { level: 3, threshold: 300, reward: 'Emoji picker' },
-  { level: 4, threshold: 600, reward: 'More colors' },
-  { level: 5, threshold: 1000, reward: 'Profile photo' },
-  { level: 6, threshold: 1500, reward: '3 more fonts' },
-  { level: 7, threshold: 2200, reward: 'Full color spectrum' },
-  { level: 8, threshold: 3000, reward: 'Any emoji' },
-  { level: 9, threshold: 4000, reward: 'Wurd animations' },
-  { level: 10, threshold: 5200, reward: 'More to come' },
-] as const;
 
 const livePeople = [
   ['Noa','NO','HOPEFUL','Tel Aviv','just now','#ffe4ee',18], ['Eli','EL','COFFEE','Haifa','1m','#fff0bd',7], ['Maya','MA','RAIN','London','1m','#e8e3ff',24],
@@ -188,18 +177,6 @@ function multiplierForStreak(streak: number) {
   return 1;
 }
 
-function levelForXp(totalXp: number) {
-  return [...levelDefinitions].reverse().find(item => totalXp >= item.threshold)?.level ?? 1;
-}
-
-function levelProgressFor(totalXp: number, level: number) {
-  const current = levelDefinitions[level - 1];
-  const next = levelDefinitions[level];
-  const earned = Math.max(0, totalXp - current.threshold);
-  if (!next) return { earned, required: earned, remaining: 0, percent: 100 };
-  const required = next.threshold - current.threshold;
-  return { earned, required, remaining: Math.max(0, required - earned), percent: Math.min(100, Math.max(0, (earned / required) * 100)) };
-}
 
 function readableError(reason: unknown, fallback: string) {
   if (reason instanceof Error) return reason.message;
@@ -262,25 +239,13 @@ function FittedTodayWord({ word, emoji, color, wordStyle, animation }: { word: s
   return <PopoverTrigger ref={frame} className={`today-word ${wordLengthClass(word)} word-style-${wordStyle} word-animation-${animation}`} style={{ color: wordColorValues[color] }} aria-label={`${word}. Your current wurd.`}><span ref={text} className="today-word-text" style={{ '--word-scale': scale } as CSSProperties}>{word}{emoji && <span className="today-emoji"> {emoji}</span>}</span></PopoverTrigger>;
 }
 
-function BrandHeader({ tab, submitted, submittedAt, now, emoji, color, wordStyle, animation = 'still', echoes, xp, level, streak, username, memberSince, city, countryCode, avatarUrl, canReplace, onReplace, replies, repliesLoading }: { tab: Tab; submitted: string; submittedAt?: string | null; now: number; emoji: string | null; color: WordColor; wordStyle: WordStyle; animation?: WordAnimation; echoes: number; xp: number; level: number; streak: number; username?: string; memberSince?: string | null; city?: string | null; countryCode?: string | null; avatarUrl?: string | null; canReplace?: boolean; onReplace?: () => void; replies: WurdReply[]; repliesLoading: boolean }) {
-  const levelProgress = levelProgressFor(xp, level);
-  const multiplier = multiplierForStreak(streak);
-  const topRow = <div className="today-brand-row"><div className="today-brand">wurd</div><div className="header-progress"><span className="level-label">LVL <b>{level}</b></span><Popover><PopoverTrigger className="header-xp" aria-label={`Level ${level}. ${levelProgress.earned} of ${levelProgress.required} XP`}><strong className="xp-total"><span className="xp-prefix">XP</span>{levelProgress.earned}</strong><span className="xp-progress"><em>{multiplier.toFixed(1)}×</em><i className="xp-bar"><b style={{ width: `${levelProgress.percent}%` }} /></i></span><span className="xp-streak"><Flame />{streak}</span></PopoverTrigger><PopoverContent side="bottom" sideOffset={7} className="echo-tooltip">{level >= 10 ? 'You reached the highest level.' : `${levelProgress.earned} / ${levelProgress.required} XP toward Level ${level + 1}. Post daily, keep your streak, and earn echoes.`}</PopoverContent></Popover></div></div>;
-  if (tab === 'play') return <header className="play-brand-header"><div className="today-brand">wurd</div></header>;
-  if (tab === 'you') return (
-    <header className="today-app-header you-identity-header">
-      {topRow}
-      <div className="you-identity">{avatarUrl && <img className="you-profile-photo" src={avatarUrl} alt="" />}<div><strong>{usernameLabel(username)}</strong><span><i>since</i><b>{memberSinceLabel(memberSince)}</b></span></div></div>
-    </header>
-  );
-  if (submitted) return (
-    <header className="today-app-header">
-      {topRow}
-      <div className="today-word-row"><Popover><FittedTodayWord word={submitted} emoji={emoji} color={color} wordStyle={wordStyle} animation={animation} /><PopoverContent side="bottom" sideOffset={7} className="echo-tooltip">This is your current Wurd. It stays live for up to 24 hours.</PopoverContent></Popover>{canReplace && <button className="replace-word-icon" type="button" aria-label="Post today's Wurd" title="A new day has started" onClick={onReplace}><Clock3 /></button>}</div>
-      <div className="today-meta-row"><p>{submittedAt ? timeLeft(submittedAt, now) : '24h left'} · {locationLabel(city, countryCode)}</p><div className="own-wurd-reactions"><OwnReplies key={submittedAt || submitted} replies={replies} loading={repliesLoading} /><EchoStat count={echoes} color={wordColorValues[color]} /></div></div>
-    </header>
-  );
-  return <header className="today-app-header browse-brand-header">{topRow}</header>;
+export function BrandHeader({ xp, level, streak, onProgress, onToday }: { xp: number; level: number; streak: number; onProgress: () => void; onToday: () => void }) {
+  const progress = levelProgressFor(xp, level);
+  return <header className="lp-header"><button className="lp-brand" aria-label="Go to Today" onClick={onToday}>wurd</button><button className="lp-xp-pill" onClick={onProgress} aria-label={`Level ${level}. ${progress.earned} XP in this level. View progression`}><span>LVL <b>{level}</b></span><i /><span><small>XP</small> <b>{progress.earned}</b></span><div><i style={{ width: `${progress.percent}%` }} /></div><span><Flame size={16} /> {streak}</span></button></header>;
+}
+
+export function CurrentWurd({ word, submittedAt, now, emoji, color, wordStyle, animation, city, countryCode, echoes, replies, loading, canReplace, onReplace }: { word: string; submittedAt: string | null; now: number; emoji: string | null; color: WordColor; wordStyle: WordStyle; animation: WordAnimation; city?: string | null; countryCode?: string | null; echoes: number; replies: WurdReply[]; loading: boolean; canReplace: boolean; onReplace: () => void }) {
+  return <section className="lp-own"><div className="lp-own-word"><h1 className="lp-own-fit"><CardWord word={word} emoji={emoji} color={wordColorValues[color]} wordStyle={wordStyle} animation={animation} /></h1>{canReplace && <button className="lp-clock-button" aria-label="Post a new Wurd for today" onClick={onReplace}><Clock3 size={17} /></button>}</div><div className="lp-own-meta"><span>{submittedAt ? timeLeft(submittedAt, now) : '24h left'}{city ? ` · ${locationLabel(city, countryCode)}` : ''}</span><div><OwnReplies key={submittedAt || word} replies={replies} loading={loading} /><EchoStat count={echoes} color={wordColorValues[color]} /></div></div></section>;
 }
 
 function OwnReplies({ replies, loading }: { replies: WurdReply[]; loading: boolean }) {
@@ -288,7 +253,7 @@ function OwnReplies({ replies, loading }: { replies: WurdReply[]; loading: boole
   return <>
     <button type="button" className="own-reply-button" aria-label={`View replies to your Wurd (${replies.length})`} aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen(true)}><MessageCircle /><span>{replies.length}</span></button>
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="own-replies-dialog">
+      <DialogContent className="lp-dialog production-dialog own-replies-dialog">
         <DialogHeader><DialogTitle>Replies to your Wurd</DialogTitle><DialogDescription>What people said back.</DialogDescription></DialogHeader>
         <div className="own-replies-list" aria-busy={loading}>
           {loading ? <p className="own-replies-empty" role="status">Loading replies…</p> : replies.length ? <ul>{replies.map(reply => <li key={reply.id}><strong dir="auto">{reply.word}</strong><span>{usernameLabel(reply.username)}</span></li>)}</ul> : <p className="own-replies-empty">No replies yet.</p>}
@@ -445,7 +410,7 @@ export function ReplyThread({ replies, currentUserId, loading, sending, error, o
       {replies.length > 0 && <button type="button" className="view-all-replies" aria-haspopup="dialog" onClick={() => setViewAll(true)}>View all {replies.length} {replies.length === 1 ? 'reply' : 'replies'}</button>}
       {(draftError || error) && <em className="reply-error">{draftError || error}</em>}
     </div>
-    <Dialog open={viewAll} onOpenChange={setViewAll}><DialogContent className="own-replies-dialog" data-reply-list><DialogHeader><DialogTitle>Replies</DialogTitle><DialogDescription>Every Wurd, and who said it.</DialogDescription></DialogHeader><div className="own-replies-list"><ul>{replies.map(reply => <li key={reply.id}><strong dir="auto">{reply.word}</strong><span>{usernameLabel(reply.username)}{reply.user_id === currentUserId ? ' · You' : ''}</span></li>)}</ul></div></DialogContent></Dialog>
+    <Dialog open={viewAll} onOpenChange={setViewAll}><DialogContent className="lp-dialog production-dialog own-replies-dialog" data-reply-list><DialogHeader><DialogTitle>Replies</DialogTitle><DialogDescription>Every Wurd, and who said it.</DialogDescription></DialogHeader><div className="own-replies-list"><ul>{replies.map(reply => <li key={reply.id}><strong dir="auto">{reply.word}</strong><span>{usernameLabel(reply.username)}{reply.user_id === currentUserId ? ' · You' : ''}</span></li>)}</ul></div></DialogContent></Dialog>
   </section>;
 }
 
@@ -513,6 +478,8 @@ export function WurdCard({ children, className, item, onDismiss }: { children: R
 }
 
 type TodayTabProps = {
+  onFindFriends: () => void;
+  onPlay: () => void;
   submitted: string;
   replacementMode: boolean;
   level: number;
@@ -535,10 +502,10 @@ type TodayTabProps = {
   hasPostedToday: boolean;
 };
 
-function TodayTab({ submitted, replacementMode, level, feed, feedLoading, now, spokeCount, feedMode, setFeedMode, setSubmitted, refreshFeed, friendStateFor, sendFriendRequest, echoStrengths, echoed, setEchoStrength, currentUserId, currentUsername, onAccountChanged, hasPostedToday }: TodayTabProps) {
+export function TodayTab({ submitted, replacementMode, level, feed, feedLoading, now, spokeCount, feedMode, setFeedMode, setSubmitted, refreshFeed, friendStateFor, sendFriendRequest, echoStrengths, echoed, setEchoStrength, currentUserId, currentUsername, onAccountChanged, hasPostedToday, onFindFriends, onPlay }: TodayTabProps) {
   const [composing, setComposing] = useState(false);
   const [draft, setDraft] = useState('');
-  const [pending, setPending] = useState('');
+
   const [emoji, setEmoji] = useState<string | null>(null);
   const [color, setColor] = useState<WordColor>('mint');
   const [wordStyle, setWordStyle] = useState<WordStyle>('bold');
@@ -582,11 +549,17 @@ function TodayTab({ submitted, replacementMode, level, feed, feedLoading, now, s
     document.addEventListener('pointerdown', closeOnOutsidePress);
     return () => document.removeEventListener('pointerdown', closeOnOutsidePress);
   }, [replyTarget]);
-  function submit(event: SyntheticEvent<HTMLFormElement>) {
+  async function submit(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (posting) return;
     const clean = draft.trim();
     if (!clean || /\s/.test(clean)) { setError('Just one word — no spaces.'); return; }
-    setPending(clean.toUpperCase());
+    setPosting(true); setError('');
+    try {
+      await setSubmitted({ word: clean.toUpperCase(), emoji, color, wordStyle, animation });
+      setDraft(''); setComposing(false);
+    } catch (reason) { setError(readableError(reason, 'Could not post your Wurd. Your draft is still here.')); }
+    finally { setPosting(false); }
   }
 
   function openReplies(item: FeedWord) {
@@ -626,35 +599,30 @@ function TodayTab({ submitted, replacementMode, level, feed, feedLoading, now, s
       setReplySending(false);
     }
   }
-  if ((!submitted && composing) || replacementMode) return (
-    <section className="tab-view today-view"><div className="daily-prompt">
-      {!pending ? <><span className="soft-icon"><Sun /></span><p>{todayDateTimeLabel()}</p><h1>What&apos;s your<br />word?</h1><form onSubmit={submit}><Input maxLength={20} value={draft} onChange={event => { setDraft(event.target.value); setError(''); }} placeholder="TYPE YOUR WORD" /><Button type="submit">Continue</Button></form>{error && <em>{error}</em>}</> :
-      <div className="confirm-word"><span>YOUR WORD FOR {todayLabel().toUpperCase()}</span><h2 className={`word-style-${wordStyle} word-animation-${animation}`} style={{ color: wordColorValues[color] }}>{pending}{emoji && ` ${emoji}`}</h2><p>{replacementMode ? 'Posting this Wurd will remove your current active Wurd.' : 'This is the only Wurd you can post today.'}</p>
-        {level >= 2 && <div className="reward-customizer">
-          <section><b>FONT</b><div className="style-options">{wordStyleChoices.filter(item => level >= item.level).map(item => <button className={`${wordStyle === item.value ? 'active ' : ''}word-style-${item.value}`} onClick={() => setWordStyle(item.value)} key={item.value}>{item.label}</button>)}</div></section>
-          {level >= 3 && (level >= 8 ? <section><b>USE ANY EMOJI</b><label className="any-emoji-input solo"><Input value={emoji || ''} onChange={event => { const next = oneEmoji(event.target.value); if (next !== undefined) setEmoji(next); }} placeholder="😊" aria-label="Use any one emoji" /><span>One emoji, placed after your Wurd.</span></label></section> : <section><b>ADD ONE EMOJI</b><div className="emoji-options"><button className={!emoji ? 'active' : ''} onClick={() => setEmoji(null)}>None</button>{emojiChoices.map(item => <button className={emoji === item ? 'active' : ''} onClick={() => setEmoji(item)} key={item}>{item}</button>)}</div></section>)}
-          {level >= 4 && <section><b>COLOR</b><div className="color-options">{wordColorChoices.filter(item => level >= item.level).map(item => <button className={color === item.value ? 'active' : ''} style={{ background: wordColorValues[item.value] }} aria-label={`${item.label} color`} onClick={() => setColor(item.value)} key={item.value} />)}</div></section>}
-          {level >= 9 && <section><b>ANIMATION</b><div className="animation-options">{animationChoices.map(item => <button className={animation === item.value ? 'active' : ''} onClick={() => setAnimation(item.value)} key={item.value}>{item.label}</button>)}</div></section>}
+  const composer = <Dialog open={(!submitted && composing) || replacementMode} onOpenChange={open => { if (!open && !posting && !replacementMode) setComposing(false); }}><DialogContent className="lp-dialog production-dialog production-compose" showCloseButton={!replacementMode && !posting}><DialogHeader><DialogTitle>Your Wurd for today.</DialogTitle><DialogDescription>One Wurd. Up to 20 characters. No spaces.</DialogDescription></DialogHeader><form className="lp-form" onSubmit={event => void submit(event)}><label className="lp-sr-only" htmlFor="daily-word-input">Your Wurd</label><Input id="daily-word-input" className="lp-word-input" maxLength={20} disabled={posting} value={draft} onChange={event => { setDraft(event.target.value); setError(''); }} placeholder="HOW YOU FEEL" /><small>{[...draft].length}/20 · Your Wurd stays for up to 24 hours.</small><fieldset disabled={posting}>
+    {level >= 2 && <div className="reward-customizer">
+          <section><b>Font</b><div className="style-options">{wordStyleChoices.filter(item => level >= item.level).map(item => <button type="button" className={`${wordStyle === item.value ? 'active ' : ''}word-style-${item.value}`} onClick={() => setWordStyle(item.value)} key={item.value}>{item.label}</button>)}</div></section>
+          {level >= 3 && (level >= 8 ? <section><b>USE ANY EMOJI</b><label className="any-emoji-input solo"><Input value={emoji || ''} onChange={event => { const next = oneEmoji(event.target.value); if (next !== undefined) setEmoji(next); }} placeholder="😊" aria-label="Use any one emoji" /><span>One emoji, placed after your Wurd.</span></label></section> : <section><b>ADD ONE EMOJI</b><div className="emoji-options"><button type="button" className={!emoji ? 'active' : ''} onClick={() => setEmoji(null)}>None</button>{emojiChoices.map(item => <button type="button" className={emoji === item ? 'active' : ''} onClick={() => setEmoji(item)} key={item}>{item}</button>)}</div></section>)}
+          {level >= 4 && <section><b>Color</b><div className="color-options">{wordColorChoices.filter(item => level >= item.level).map(item => <button type="button" className={color === item.value ? 'active' : ''} style={{ background: wordColorValues[item.value] }} aria-label={`${item.label} color`} onClick={() => setColor(item.value)} key={item.value} />)}</div></section>}
+          {level >= 9 && <section><b>Animation</b><div className="animation-options">{animationChoices.map(item => <button type="button" className={animation === item.value ? 'active' : ''} onClick={() => setAnimation(item.value)} key={item.value}>{item.label}</button>)}</div></section>}
         </div>}
-        {error && <em className="post-error">{error}</em>}
-        <div className="confirm-actions"><Button variant="outline" disabled={posting} onClick={() => setPending('')}>Go back</Button><Button disabled={posting} onClick={async () => { setPosting(true); setError(''); try { await setSubmitted({ word: pending, emoji, color, wordStyle, animation }); setPending(''); setDraft(''); setComposing(false); } catch (reason) { setError(reason instanceof Error ? reason.message : 'Could not post your word.'); } finally { setPosting(false); } }}>{posting ? 'Posting…' : replacementMode ? 'Replace & post' : 'Post my word'}</Button></div>
-      </div>}
-    </div>{!replacementMode && <Button variant="ghost" onClick={() => setComposing(false)}>Back to Today</Button>}</section>
-  );
+    </fieldset>{replacementMode && <p>Your new Wurd will replace your current one. Your history stays in You.</p>}{error && <p className="lp-error" role="alert">{error}</p>}<button className="lp-action" type="submit" disabled={posting || !draft.trim()}>{posting ? 'Posting…' : 'Post my Wurd'} <ArrowRight size={17} /></button></form></DialogContent></Dialog>;
   const demoPeople = feedMode === 'New' ? [...livePeople] : [...livePeople].sort((left, right) => right[6] - left[6]);
   const demoFriends = [...friends].sort((left, right) => right.echoes - left.echoes);
   return (
-    <section className="tab-view live-view">
-      {!submitted && <div className="browse-post-cta"><div><h2>{hasPostedToday ? 'Your Wurd has expired.' : 'What’s your word today?'}</h2><p>{hasPostedToday ? 'Come back tomorrow for a new Wurd.' : 'One word for your day. Your people can echo it back.'}</p></div>{!hasPostedToday && <Button onClick={() => setComposing(true)}>Post my Wurd</Button>}</div>}
-      <div className="today-toolbar"><div className="today-feed-summary"><span><i />{isSupabaseConfigured ? `${spokeCount} posted` : feedMode === 'Friends' ? '8 friends posted' : '1,284 posted'}</span><small>Tap reply to respond · Tap the waves to echo</small></div><div className="today-controls"><div className="today-mode cozy-segments"><button className={feedMode === 'New' ? 'active' : ''} onClick={() => setFeedMode('New')}>New</button><button className={feedMode === 'Top' ? 'active' : ''} onClick={() => setFeedMode('Top')}>Top</button><button className={feedMode === 'Friends' ? 'active' : ''} onClick={() => setFeedMode('Friends')}>Friends</button></div><button className="feed-refresh" aria-label="Refresh today" title="Refresh" disabled={feedLoading} onClick={() => void refreshFeed()}><RefreshCw /></button></div></div>
-      {isSupabaseConfigured ? <div className={feedMode === 'Friends' ? 'friends-card-grid' : 'live-grid'}>{feedLoading ? <p className="feed-empty">Finding today&apos;s words…</p> : feed.length ? feed.map(item => {
+    <section className="production-today">{composer}
+      {!submitted && <section className="lp-compose-intro"><span className="lp-kicker">A MOMENT FOR YOU</span><h1>{hasPostedToday ? 'A new day. A new Wurd.' : 'What’s your Wurd?'}</h1><p>{hasPostedToday ? 'You’ve posted today. Come back tomorrow.' : 'No perfect answer. Just how today feels.'}</p>{!hasPostedToday && <button className="lp-action" onClick={() => setComposing(true)}><Plus size={18} /> Post today’s Wurd</button>}</section>}
+      <PlayIntroduction key={currentUserId || 'local'} userId={currentUserId || 'local'} onOpen={onPlay} />
+      <div className="lp-feed-heading"><div><h2>Your daily window</h2><span>{spokeCount} {feedMode === 'Friends' ? 'friends’ posts' : 'posts'}</span></div><button className="lp-icon" aria-label="Refresh posts" disabled={feedLoading} onClick={() => void refreshFeed()}><RefreshCw size={20} /></button></div><div className="lp-filter" aria-label="Feed sorting">{(['New', 'Top', 'Friends'] as const).map(mode => <button key={mode} aria-pressed={feedMode === mode} onClick={() => { setOpenEchoCardId(null); setReplyTarget(null); setFeedMode(mode); }}>{mode}</button>)}</div><p className="lp-feed-hint">Tap <EchoWaves /> to echo. Tap <MessageCircle size={14} /> to reply.</p>
+      {isSupabaseConfigured ? <div className="live-grid lp-feed">{feedLoading ? <p className="feed-empty">Finding today&apos;s words…</p> : feed.length ? feed.map(item => {
         const displayItem = { ...item, reply_count: Math.max(replyCountOverrides[String(item.id)] ?? 0, item.reply_count) };
         const repliesOpen = replyTarget?.id === item.id;
         const card = <FeedCard key={item.id} item={displayItem} ownWord={submitted} now={now} friendState={friendStateFor(item.user_id)} previewStrength={echoStrengths[String(item.id)]} pickerOpen={openEchoCardId === String(item.id)} repliesOpen={repliesOpen} onPickerChange={open => { if (open) setReplyTarget(null); setOpenEchoCardId(open ? String(item.id) : null); }} onFriendRequest={() => { setFriendRequestState('confirm'); setFriendTarget(item); }} onOpenReply={() => { if (repliesOpen) setReplyTarget(null); else openReplies(displayItem); }} onEcho={strength => setEchoStrength(item.id, strength)} />;
         const visibleReplies = repliesFor(item);
         return <WurdCard className={`wurd-cloud-card ${repliesOpen ? 'composing-reply' : ''}`} key={item.id} item={item} onDismiss={() => { setOpenEchoCardId(null); setReplyTarget(null); }}>{card}<CardSafety item={item} onChanged={onAccountChanged} /><FloatingReplies replies={visibleReplies} currentUserId={currentUserId} />{repliesOpen && <ReplyThread key={item.id} onClose={() => setReplyTarget(current => current?.id === item.id ? null : current)} replies={replyRows} currentUserId={currentUserId} loading={replyLoading} sending={replySending} error={replyError} onSubmit={postReply} />}</WurdCard>;
-      }) : <p className="feed-empty">{feedMode === 'Friends' ? 'Your friends have not spoken yet.' : 'You are early. Today’s words will appear here.'}</p>}</div> : feedMode === 'Friends' ? <div className="friends-card-grid">{demoFriends.map(friend => <FriendCard key={friend.id} friend={friend} match={friend.word === submitted} echoed={echoed.includes(friend.id)} onEcho={() => void setEchoStrength(friend.id, echoed.includes(friend.id) ? 0 : 3)} />)}</div> : <div className="live-grid">{demoPeople.map((person, index) => <LiveCard key={`${person[0]}-${person[2]}`} person={person} echoed={echoed.includes(`live-${index}`)} onEcho={() => void setEchoStrength(`live-${index}`, echoed.includes(`live-${index}`) ? 0 : 3)} />)}</div>}
-      <Dialog open={friendTarget !== null} onOpenChange={open => { if (!open && friendRequestState !== 'sending') setFriendTarget(null); }}><DialogContent className="friend-request-dialog"><DialogHeader><DialogTitle>{friendRequestState === 'sent' ? 'Request sent' : `Send friend request to ${usernameLabel(friendTarget?.username)}?`}</DialogTitle>{friendRequestState === 'sent' && <DialogDescription>They’ll see it in Friends.</DialogDescription>}</DialogHeader>{friendRequestState !== 'sent' && <div className="replacement-actions"><Button variant="outline" disabled={friendRequestState === 'sending'} onClick={() => setFriendTarget(null)}>Cancel</Button><Button disabled={friendRequestState === 'sending'} onClick={async () => { if (!friendTarget) return; setFriendRequestState('sending'); const sent = await sendFriendRequest(friendTarget.user_id); if (!sent) { setFriendRequestState('confirm'); return; } setFriendRequestState('sent'); window.setTimeout(() => setFriendTarget(null), 1100); }}>{friendRequestState === 'sending' ? 'Sending…' : 'Send'}</Button></div>}</DialogContent></Dialog>
+      }) : <div className="lp-empty"><span><UsersRound /></span><h2>{feedMode === 'Friends' ? 'Your people belong here.' : 'It’s quiet here, for now.'}</h2><p>{feedMode === 'Friends' ? 'Find a friend, or invite someone to say less with you.' : 'Be the first to share a Wurd. A little community starts with you.'}</p><button className="lp-action" onClick={onFindFriends}>Find your people <ArrowRight size={17} /></button></div>}</div> : feedMode === 'Friends' ? <div className="friends-card-grid">{demoFriends.map(friend => <FriendCard key={friend.id} friend={friend} match={friend.word === submitted} echoed={echoed.includes(friend.id)} onEcho={() => void setEchoStrength(friend.id, echoed.includes(friend.id) ? 0 : 3)} />)}</div> : <div className="live-grid">{demoPeople.map((person, index) => <LiveCard key={`${person[0]}-${person[2]}`} person={person} echoed={echoed.includes(`live-${index}`)} onEcho={() => void setEchoStrength(`live-${index}`, echoed.includes(`live-${index}`) ? 0 : 3)} />)}</div>}
+      {!feedLoading && feed.length > 0 && <p className="lp-endnote">You’re all caught up. Go live a little.</p>}
+      <Dialog open={friendTarget !== null} onOpenChange={open => { if (!open && friendRequestState !== 'sending') setFriendTarget(null); }}><DialogContent className="lp-dialog production-dialog friend-request-dialog"><DialogHeader><DialogTitle>{friendRequestState === 'sent' ? 'Request sent' : `Send friend request to ${usernameLabel(friendTarget?.username)}?`}</DialogTitle>{friendRequestState === 'sent' && <DialogDescription>They’ll see it in Friends.</DialogDescription>}</DialogHeader>{friendRequestState !== 'sent' && <div className="replacement-actions"><Button variant="outline" disabled={friendRequestState === 'sending'} onClick={() => setFriendTarget(null)}>Cancel</Button><Button disabled={friendRequestState === 'sending'} onClick={async () => { if (!friendTarget) return; setFriendRequestState('sending'); const sent = await sendFriendRequest(friendTarget.user_id); if (!sent) { setFriendRequestState('confirm'); return; } setFriendRequestState('sent'); window.setTimeout(() => setFriendTarget(null), 1100); }}>{friendRequestState === 'sending' ? 'Sending…' : 'Send'}</Button></div>}</DialogContent></Dialog>
     </section>
   );
 }
@@ -665,30 +633,17 @@ function FriendCard({ friend, match, echoed, onEcho }: { friend: typeof friends[
   return <article className={`live-card friend-square ${echoed ? 'echoed' : ''}`}><button className="card-echo-action" aria-pressed={echoed} aria-label={`${friend.name} chose ${friend.word}. Tap to echo.`} onClick={onEcho}>{content}</button><EchoStat count={friend.echoes + (echoed ? 1 : 0)} /></article>;
 }
 
-function YouTab({ history, incomingRequestCount, onOpenPanel, loadEarlier, hasEarlier, historyBusy }: { history: DiaryWord[]; incomingRequestCount: number; onOpenPanel: (panel: Exclude<YouPanel, null>) => void; loadEarlier: () => Promise<void>; hasEarlier: boolean; historyBusy: boolean }) {
-  const dayTrack = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const frame = window.requestAnimationFrame(() => {
-      if (dayTrack.current) dayTrack.current.scrollTop = dayTrack.current.scrollHeight;
-    });
-    return () => window.cancelAnimationFrame(frame);
-  }, []);
-  const diary = [...history].reverse().map(item => {
-    const date = new Date(`${item.local_date}T12:00:00`);
-    return { id: item.id, weekday: new Intl.DateTimeFormat('en', { weekday: 'long' }).format(date), day: new Intl.DateTimeFormat('en', { day: 'numeric' }).format(date), month: new Intl.DateTimeFormat('en', { month: 'short' }).format(date), word: item.word, emoji: item.emoji, color: item.color, wordStyle: item.word_style || 'bold', animation: item.animation || 'still', city: item.city, echoes: item.echo_count, isToday: item.local_date === localDayKey() };
-  });
-  return (
-    <section className="tab-view you-view">
-      <div className="you-actions" aria-label="People and account tools">
-        <button onClick={() => onOpenPanel('search')}><Search /><span>Search</span></button>
-        <button onClick={() => onOpenPanel('friends')}><UsersRound /><span>Friends</span>{incomingRequestCount > 0 && <b className="friends-request-badge" aria-label={`${incomingRequestCount} incoming friend ${incomingRequestCount === 1 ? 'request' : 'requests'}`}>{incomingRequestCount > 9 ? '9+' : incomingRequestCount}</b>}</button>
-        <button onClick={() => onOpenPanel('xp')}><Trophy /><span>XP</span></button>
-        <button onClick={() => onOpenPanel('settings')}><Settings /><span>Settings</span></button>
-      </div>
-      {diary.length > 0 && <div className="calendar-swipe-cue">SWIPE DAYS ↑</div>}
-      {diary.length > 0 ? <div className="day-ribbon" ref={dayTrack} aria-label="Your recent words">{hasEarlier && <button className="history-more" disabled={historyBusy} onClick={() => void loadEarlier()}>{historyBusy ? 'Loading…' : 'Load earlier Wurds'}</button>}{diary.map(item => <article className={`diary-day-card ${item.isToday ? 'is-today' : ''}`} key={item.id}><span>{item.weekday}</span><div className="day-date"><i>{item.month}</i><strong>{item.day}</strong></div><b className={`word-style-${item.wordStyle} word-animation-${item.animation}`} style={{ color: wordColorValues[item.color] }}>{item.word}{item.emoji && ` ${item.emoji}`}</b><small className="diary-location"><MapPin />{item.city || 'Location not added'}</small><EchoStat count={item.echoes} />{item.isToday && <em>TODAY</em>}</article>)}</div> : <div className="diary-empty"><span><Sun /></span><h2>Your words start here.</h2><p>Post your first word and it will become the first day in your story.</p></div>}
-    </section>
-  );
+export function YouTab({ history, incomingRequestCount, onOpenPanel, loadEarlier, hasEarlier, historyBusy, username, memberSince, avatarUrl, onToday }: { history: DiaryWord[]; incomingRequestCount: number; onOpenPanel: (panel: Exclude<YouPanel, null>) => void; loadEarlier: () => Promise<void>; hasEarlier: boolean; historyBusy: boolean; username?: string; memberSince?: string | null; avatarUrl?: string | null; onToday: () => void }) {
+  return <section className="production-you">
+    <section className="lp-profile">{avatarUrl && <img src={avatarUrl} alt="Your profile" />}<span className="lp-kicker">YOUR LITTLE CORNER</span><h1>{usernameLabel(username)}</h1><p><span>since</span> {memberSince ? new Date(memberSince).toLocaleDateString(undefined, { month: 'short', year: 'numeric' }) : '—'}</p></section>
+    <div className="lp-tools" aria-label="People and account tools">
+      <button onClick={() => onOpenPanel('friends')}><UsersRound size={22} /><span>Friends</span>{incomingRequestCount > 0 && <b aria-label={`${incomingRequestCount} incoming friend requests`}>{incomingRequestCount}</b>}</button>
+      <button onClick={() => onOpenPanel('xp')}><Trophy size={22} /><span>Progress</span></button>
+      <button onClick={() => onOpenPanel('settings')}><Settings size={22} /><span>Settings</span></button>
+    </div>
+    <div className="lp-section-heading"><h2>Your days, in Wurds.</h2><span>{history.length}{hasEarlier ? '+' : ''}</span></div>
+    {history.length ? <div className="lp-history">{history.map(item => { const date = new Date(`${item.local_date}T12:00:00`); return <article key={item.id}><div><span>{date.toLocaleDateString(undefined, { weekday: 'long' })}</span><strong>{date.getDate()} <small>{date.toLocaleDateString(undefined, { month: 'short' })}</small></strong></div><div><h2 className={`word-style-${item.word_style || 'bold'}`} style={{ color: wordColorValues[item.color] }}>{item.word}{item.emoji && ` ${item.emoji}`}</h2><small>{item.city || 'Location not added'}</small></div><span className="lp-history-count"><EchoWaves />{item.echo_count}</span></article>; })}{hasEarlier && <button className="lp-action secondary" disabled={historyBusy} onClick={() => void loadEarlier()}>{historyBusy ? 'Loading…' : 'Load earlier days'}</button>}</div> : <div className="lp-empty"><span><Sun /></span><h2>Every story starts somewhere.</h2><p>Your Wurds will collect here. A small record of how life felt.</p><button className="lp-action" onClick={onToday}>Write your first Wurd</button></div>}
+  </section>;
 }
 
 type YouToolsDialogProps = {
@@ -731,7 +686,7 @@ type YouToolsDialogProps = {
   accountError: string;
 };
 
-function YouToolsDialog(props: YouToolsDialogProps) {
+export function YouToolsDialog(props: YouToolsDialogProps) {
   const [settingsPage, setSettingsPage] = useState<'menu' | 'profile' | 'notifications'>('menu');
   useEffect(() => { setSettingsPage('menu'); }, [props.panel]);
   const ladder = useRef<HTMLDivElement>(null);
@@ -743,6 +698,7 @@ function YouToolsDialog(props: YouToolsDialogProps) {
   const [photoBusy, setPhotoBusy] = useState(false);
   const [photoError, setPhotoError] = useState('');
   const [confirmUnfriendId, setConfirmUnfriendId] = useState<number | null>(null);
+  const [requestTarget, setRequestTarget] = useState<ProfileSummary | null>(null);
 
   useEffect(() => () => {
     if (photoCrop) URL.revokeObjectURL(photoCrop.src);
@@ -839,18 +795,18 @@ function YouToolsDialog(props: YouToolsDialogProps) {
   const nextLevel = levelDefinitions[props.level];
   return (<>
     <Dialog open={props.panel !== null && photoCrop === null} onOpenChange={open => { if (!open && !photoCrop) props.setPanel(null); }}>
-      <DialogContent className={`you-tool-dialog ${props.panel === 'settings' ? `settings-${settingsPage}` : ''}`}>
+      <DialogContent className={`lp-dialog production-dialog you-tool-dialog ${props.panel === 'settings' ? `settings-${settingsPage}` : ''}`}>
         {props.accountError && <p role="alert" className="notification-error">{props.accountError}</p>}
-        {props.panel === 'search' && <>
-          <DialogHeader><DialogTitle>Find your people</DialogTitle><DialogDescription>Search by username, then send a friend request.</DialogDescription></DialogHeader>
-          <form className="friend-search" onSubmit={event => { event.preventDefault(); void props.searchPeople(); }}><Input aria-label="Search username" value={props.searchQuery} onChange={event => props.onSearchQueryChange(event.target.value)} maxLength={24} placeholder="Start typing a username" autoComplete="off" /><Button type="submit" disabled={props.busy}><Search /> Search</Button></form>
+        {(props.panel === 'search' || props.panel === 'friends') && <>
+          <DialogHeader><DialogTitle>Your people.</DialogTitle><DialogDescription>Find a friend. Bring your people closer.</DialogDescription></DialogHeader>
+          <form className="friend-search lp-search" onSubmit={event => { event.preventDefault(); void props.searchPeople(); }}><Input aria-label="Search username" value={props.searchQuery} onChange={event => props.onSearchQueryChange(event.target.value)} maxLength={24} placeholder="Find an @username" autoComplete="off" /><Button type="submit" aria-label="Search people" disabled={props.busy}><Search /></Button></form>
           <div className="people-list">{props.searchResults.map(person => {
             const relationship = relationFor(person.id);
-            return <div className="person-row" key={person.id}><div><strong>{usernameLabel(person.username)}</strong><small><MapPin />{person.city || 'Location not added'}</small></div>{relationship?.status === 'accepted' ? <span className="status-chip"><Check /> Friends</span> : relationship?.status === 'pending' ? <span className="status-chip">Requested</span> : <Button size="sm" onClick={() => void props.sendFriendRequest(person.id)} disabled={props.busy}><UserPlus /> Connect</Button>}</div>;
+            return <div className="person-row" key={person.id}><div><strong>{usernameLabel(person.username)}</strong><small><MapPin />{person.city || 'Location not added'}</small></div>{relationship?.status === 'accepted' ? <span className="status-chip"><Check /> Friends</span> : relationship?.status === 'pending' ? <span className="status-chip">{relationship.addressee_id === props.userId ? 'Incoming request' : 'Requested'}</span> : <Button size="sm" onClick={() => setRequestTarget(person)} disabled={props.busy}><UserPlus /> Connect</Button>}</div>;
           })}{props.searchQuery && !props.busy && props.searchResults.length === 0 && <p className="panel-empty">No matching usernames yet.</p>}</div>
         </>}
-        {props.panel === 'friends' && <>
-          <DialogHeader><DialogTitle>Friends</DialogTitle><DialogDescription>Accept requests or see your people.</DialogDescription></DialogHeader>
+        {props.panel === 'friends' && !props.searchQuery.trim() && <>
+
           <InviteButton /><div className="people-list friendship-list">{incoming.length > 0 && <h3 className="friend-group-label">Incoming requests</h3>}
             {incoming.map(item => <div className="person-row" key={item.id}><div><strong>{usernameLabel(item.other.username)}</strong><small>Wants to be friends</small></div><div className="request-response-actions"><Button size="sm" variant="outline" onClick={() => void props.declineFriend(item.id)} disabled={props.busy}>Decline</Button><Button size="sm" onClick={() => void props.acceptFriend(item.id)} disabled={props.busy}><Check /> Accept</Button></div></div>)}
             {outgoing.length > 0 && <h3 className="friend-group-label">Sent requests</h3>}{outgoing.map(item => <div className="person-row" key={item.id}><div><strong>{usernameLabel(item.other.username)}</strong><small>Request sent</small></div><span className="status-chip">Pending</span></div>)}
@@ -859,8 +815,8 @@ function YouToolsDialog(props: YouToolsDialogProps) {
           </div>
         </>}
         {props.panel === 'xp' && <>
-          <DialogHeader><DialogTitle>Your XP</DialogTitle><DialogDescription>Wurds, friendships, echoes received and matching answers in Play move you forward.</DialogDescription></DialogHeader>
-          <section className="xp-summary-card"><div><span>LEVEL</span><strong>{props.level}</strong><small><Flame /> {props.streak} day streak</small></div><div className="xp-summary-progress"><strong>{props.level >= 10 ? `${xpProgress.earned} XP` : `${xpProgress.earned} / ${xpProgress.required} XP`}</strong><i><b style={{ width: `${xpProgress.percent}%` }} /></i><small>{nextLevel ? `${xpProgress.remaining} XP to Level ${nextLevel.level}` : 'Highest level reached'}</small></div>{nextLevel && <p><span>NEXT UNLOCK</span><strong>???</strong></p>}</section>
+          <DialogHeader><DialogTitle>A little more you.</DialogTitle><DialogDescription>Show up. Connect. Make it your own.</DialogDescription></DialogHeader>
+          <section className="lp-xp-summary"><span className="lp-kicker">LEVEL {props.level}</span><h2>{xpProgress.earned} <small>/ {nextLevel ? xpProgress.required : '—'} XP</small></h2><div className="lp-progress-track"><i style={{ width: `${xpProgress.percent}%` }} /></div><p>{nextLevel ? `${xpProgress.remaining} XP to Level ${nextLevel.level}` : 'You’ve reached our highest level for now.'}</p></section>
           <RecentXp /><div className="xp-ladder" ref={ladder} aria-label="Level progression"><div className="xp-ladder-more" aria-label="More levels coming"><i /><span>•••</span></div>{[...levelDefinitions].reverse().map(item => {
             const state = item.level < props.level ? 'completed' : item.level === props.level ? 'current' : 'upcoming';
             const reward = item.level <= props.level ? item.reward : '???';
@@ -868,8 +824,8 @@ function YouToolsDialog(props: YouToolsDialogProps) {
           })}</div>
         </>}
         {props.panel === 'settings' && <>
-          <DialogHeader><DialogTitle>{settingsPage === 'profile' ? 'Username & city' : settingsPage === 'notifications' ? 'Notifications' : 'Settings'}</DialogTitle><DialogDescription>Make wurd yours.</DialogDescription></DialogHeader>
-          {settingsPage === 'menu' ? <div className="account-menu"><button onClick={() => setSettingsPage('profile')}><CircleUserRound /><span>Username, city & photo</span><span>›</span></button><button onClick={() => setSettingsPage('notifications')}><Bell /><span>Notifications</span><span>›</span></button></div> : <Button variant="ghost" onClick={() => setSettingsPage('menu')}>← Settings</Button>}
+          <DialogHeader><DialogTitle>{settingsPage === 'profile' ? 'Your profile' : settingsPage === 'notifications' ? 'Stay a little closer.' : 'Make yourself at home.'}</DialogTitle><DialogDescription>Make wurd yours.</DialogDescription></DialogHeader>
+          {settingsPage === 'menu' ? <div className="account-menu"><button onClick={() => setSettingsPage('profile')}><CircleUserRound /><span>Profile</span><span>›</span></button><button onClick={() => setSettingsPage('notifications')}><Bell /><span>Notifications</span><span>›</span></button></div> : <Button variant="ghost" onClick={() => setSettingsPage('menu')}>← Settings</Button>}
           {props.level >= 5 && <section className="profile-photo-setting">
             <div className="profile-photo-preview">{props.profilePhoto ? <img src={props.profilePhoto} alt="Your profile preview" /> : <CircleUserRound />}</div>
             <div><strong>Profile photo</strong><small>Shown as a small circle beside your Wurds.</small><div className="profile-photo-actions"><label htmlFor="profile-photo-input">{props.profilePhoto ? 'Change photo' : 'Choose photo'}</label>{props.profilePhoto && <button type="button" disabled={photoBusy || props.busy} onClick={() => void props.removeProfilePhoto()}>Remove</button>}</div></div>
@@ -886,8 +842,9 @@ function YouToolsDialog(props: YouToolsDialogProps) {
         </>}
       </DialogContent>
     </Dialog>
+    <Dialog open={requestTarget !== null} onOpenChange={open => { if (!open && !props.busy) setRequestTarget(null); }}><DialogContent className="lp-dialog production-dialog"><DialogHeader><DialogTitle>Connect with {usernameLabel(requestTarget?.username)}?</DialogTitle><DialogDescription>They’ll see your request in Friends. You connect when they accept.</DialogDescription></DialogHeader>{props.accountError && <p className="lp-error" role="alert">{props.accountError}</p>}<div className="lp-actions"><button className="lp-action secondary" disabled={props.busy} onClick={() => setRequestTarget(null)}>Cancel</button><button className="lp-action" disabled={props.busy} onClick={async () => { if (requestTarget && await props.sendFriendRequest(requestTarget.id)) setRequestTarget(null); }}>{props.busy ? 'Sending…' : 'Send request'}</button></div></DialogContent></Dialog>
     <Dialog open={photoCrop !== null} onOpenChange={open => { if (!open && !photoBusy) closePhotoCrop(); }}>
-        <DialogContent className="photo-crop-dialog">
+        <DialogContent className="lp-dialog production-dialog photo-crop-dialog">
           <DialogHeader><DialogTitle>Position your photo</DialogTitle><DialogDescription>Drag freely and zoom. The circle is exactly what other people will see.</DialogDescription></DialogHeader>
           {photoCrop && <>
             <div ref={cropFrame} className="photo-crop-frame" onPointerDown={startPhotoDrag} onPointerMove={movePhoto} onPointerUp={() => { dragStart.current = null; }} onPointerCancel={() => { dragStart.current = null; }}>
@@ -1482,8 +1439,8 @@ export default function CozyPreview() {
 
   if (!import.meta.env.DEV && !isSupabaseConfigured) return <main className="auth-stage"><div className="auth-card"><div className="cozy-logo">wurd</div><p>We couldn’t connect. Please try again shortly.</p></div></main>;
   if (authLoading) return <main className="auth-stage"><div className="auth-card"><div className="cozy-logo">wurd</div><p>Getting today ready</p></div></main>;
-  if (isSupabaseConfigured && !user) return <main className="auth-stage"><div className="auth-card sign-in-card launch-welcome"><div className="cozy-logo">wurd</div><h1>Say less.</h1><p className="welcome-promise">Your day in one word. A little closer to your people.</p><div className="welcome-example"><small>AN EXAMPLE WURD</small><strong>GROUNDED</strong></div><div className="welcome-steps"><span><b>Today</b> · Share a word. Echo a feeling. Reply with one.</span><span><b>Play</b> · Guess what everyone else will say.</span><span><b>You</b> · Keep your history. Grow with your people.</span></div><Button className="google-sign-in" onClick={signIn}><GoogleLogo /> Continue with Google</Button><PrivacyNote />{appError && <em>{appError}</em>}</div></main>;
-  if (profile && profile.username.startsWith('wurd_')) return <main className="auth-stage"><form className="auth-card onboarding-card" onSubmit={saveOnboarding}><div className="cozy-logo">wurd</div><h1>Make it yours.</h1><p>Choose a username. Add your city if you like.</p><label htmlFor="onboarding-username">Username</label><Input id="onboarding-username" maxLength={24} value={usernameDraft} onChange={event => { setUsernameDraft(event.target.value); setAppError(''); }} placeholder="your_username" /><label htmlFor="onboarding-city">City (optional)</label><CityPicker id="onboarding-city" query={cityDraft} selected={citySelection} onQueryChange={value => { setCityDraft(value); setAppError(''); }} onSelect={setCitySelection} /><Button type="submit" disabled={accountBusy}>{accountBusy ? 'Saving…' : 'Start using wurd'}</Button>{appError && <em>{appError}</em>}</form></main>;
+  if (isSupabaseConfigured && !user) return <main className="lp lp-auth"><div className="lp-welcome"><div className="lp-brand">wurd</div><h1>Say less.</h1><p className="lp-lead">Your day in a word.<br />A little closer to your people.</p><div className="lp-example" aria-label="Example Wurd, not a live post"><span>@noa <span>Jerusalem · example</span></span><strong>GROUNDED</strong><div><MessageCircle size={19} /> SAME <span><EchoWaves /> 8</span></div></div><div className="lp-three"><p><Sun /> Share one Wurd a day.</p><p><EchoWaves /> Echo a feeling. Reply with a word.</p><p><Gamepad2 /> Guess together in The common wurd.</p></div><button className="lp-action google-sign-in" onClick={signIn}><GoogleLogo /> Continue with Google</button><PrivacyNote />{appError && <p className="lp-error" role="alert">{appError}</p>}</div></main>;
+  if (profile && profile.username.startsWith('wurd_')) return <main className="lp lp-auth"><div className="lp-welcome"><div className="lp-brand">wurd</div><h1>Make it yours.</h1><p>A name, a Wurd, a little connection.</p><form className="lp-form" onSubmit={saveOnboarding}><label htmlFor="onboarding-username">Username</label><div className="lp-at-input"><span>@</span><Input id="onboarding-username" maxLength={24} value={usernameDraft} onChange={event => { setUsernameDraft(event.target.value); setAppError(''); }} placeholder="yourname" /></div><small>Your name here. Not your Google account name.</small><label htmlFor="onboarding-city">City <span className="lp-muted">optional</span></label><CityPicker id="onboarding-city" query={cityDraft} selected={citySelection} onQueryChange={value => { setCityDraft(value); setAppError(''); }} onSelect={setCitySelection} /><small>Visible on new posts. No GPS or street address.</small><button className="lp-action" type="submit" disabled={accountBusy}>{accountBusy ? 'Saving…' : 'Make it yours'} <ArrowRight size={18} /></button>{appError && <p className="lp-error" role="alert">{appError}</p>}</form></div></main>;
 
   const realXp = profile?.xp ?? 0;
   const levelTenPreview = isLevelTenPreview();
@@ -1529,15 +1486,16 @@ export default function CozyPreview() {
   const visibleFeed = levelTenPreview ? [previewWord, ...feed.filter(item => item.id !== previewWord.id)] : feed;
   const ownEchoes = history.find(item => item.local_date === submittedLocalDate)?.echo_count ?? 0;
   return (
-    <main className={`cozy-stage fixed-app active-${tab} ${tab !== 'play' ? 'today-app' : ''}`}><section className="cozy-shell"><BrandHeader tab={tab} submitted={headerSubmitted} submittedAt={submittedAt} now={clockNow} emoji={submittedEmoji} color={submittedColor} wordStyle={submittedWordStyle} animation={submittedAnimation} avatarUrl={level >= 5 ? profilePhotoPreview : null} echoes={ownEchoes} replies={ownFeedWord?.user_id === user?.id && ownFeedWord?.created_at === submittedAt ? ownFeedWord.replies ?? [] : []} repliesLoading={feedLoading} xp={xp} level={level} streak={streak} username={profile?.username} memberSince={profile?.created_at} city={activeSubmitted ? (history.find(row => row.created_at === submittedAt)?.city ?? ownFeedWord?.city ?? profile?.city) : profile?.city} countryCode={ownFeedWord?.created_at === submittedAt ? ownFeedWord.country_code : profile?.country_code} canReplace={tab === 'today' && canReplace && !replacementMode} onReplace={() => setReplacementStep('explain')} /><div className="cozy-main">
+    <main className="lp live-product today-app"><BrandHeader xp={xp} level={level} streak={streak} onToday={() => setTab('today')} onProgress={() => setYouPanel('xp')} /><div className="lp-content">
+      {tab === 'today' && headerSubmitted && <CurrentWurd word={headerSubmitted} submittedAt={submittedAt} now={clockNow} emoji={submittedEmoji} color={submittedColor} wordStyle={submittedWordStyle} animation={submittedAnimation} city={history.find(row => row.created_at === submittedAt)?.city ?? ownFeedWord?.city ?? profile?.city} countryCode={ownFeedWord?.created_at === submittedAt ? ownFeedWord.country_code : profile?.country_code} echoes={ownEchoes} replies={ownFeedWord?.user_id === user?.id && ownFeedWord?.created_at === submittedAt ? ownFeedWord.replies ?? [] : []} loading={feedLoading} canReplace={canReplace && !replacementMode} onReplace={() => setReplacementStep('explain')} />}
       {offline && <p className="offline-banner" role="status">You’re offline. Your draft stays here. Reconnect before posting or sending.</p>}{appError && <button className="app-error" onClick={() => setAppError('')}>{appError}</button>}
-      {tab === 'today' && <TodayTab submitted={activeSubmitted} replacementMode={replacementMode} level={level} feed={visibleFeed.filter(item => isWithinTodayWindow(item.created_at, clockNow))} feedLoading={feedLoading} now={clockNow} spokeCount={visibleFeed.filter(item => isWithinTodayWindow(item.created_at, clockNow)).length + (activeSubmitted ? 1 : 0)} feedMode={feedMode} setFeedMode={setFeedMode} setSubmitted={postWord} refreshFeed={async () => { if (!user) { window.location.reload(); return; } setAppError(''); try { await Promise.all([loadAccount(user), loadFeed(feedMode, user)]); } catch (reason) { setAppError(readableError(reason, 'Could not refresh today.')); } }} friendStateFor={friendStateFor} sendFriendRequest={sendFriendRequest} echoStrengths={echoStrengths} echoed={echoed} setEchoStrength={setEchoStrength} currentUserId={user?.id || null} currentUsername={profile?.username || 'you'} hasPostedToday={hasPostedToday} onAccountChanged={async () => { if (user) await Promise.all([loadConnections(user), loadAccount(user), loadFeed(feedMode,user)]); }} />}
+      {tab === 'today' && <TodayTab onPlay={() => setTab('play')} onFindFriends={() => { setSearchQuery(''); setSearchResults([]); setYouPanel('friends'); }} submitted={activeSubmitted} replacementMode={replacementMode} level={level} feed={visibleFeed.filter(item => isWithinTodayWindow(item.created_at, clockNow))} feedLoading={feedLoading} now={clockNow} spokeCount={visibleFeed.filter(item => isWithinTodayWindow(item.created_at, clockNow)).length + (activeSubmitted && feedMode !== 'Friends' ? 1 : 0)} feedMode={feedMode} setFeedMode={setFeedMode} setSubmitted={postWord} refreshFeed={async () => { if (!user) { window.location.reload(); return; } setAppError(''); try { await Promise.all([loadAccount(user), loadFeed(feedMode, user)]); } catch (reason) { setAppError(readableError(reason, 'Could not refresh today.')); } }} friendStateFor={friendStateFor} sendFriendRequest={sendFriendRequest} echoStrengths={echoStrengths} echoed={echoed} setEchoStrength={setEchoStrength} currentUserId={user?.id || null} currentUsername={profile?.username || 'you'} hasPostedToday={hasPostedToday} onAccountChanged={async () => { if (user) await Promise.all([loadConnections(user), loadAccount(user), loadFeed(feedMode,user)]); }} />}
       {tab === 'play' && <Suspense fallback={<p className="play-loading" role="status">Opening the games…</p>}><PlayTab key={user?.id || 'signed-out'} onXpChanged={syncGameXp} /></Suspense>}
-      {tab === 'you' && <YouTab history={history} loadEarlier={loadEarlier} hasEarlier={hasEarlier} historyBusy={historyBusy} incomingRequestCount={incomingRequestCount} onOpenPanel={panel => { setAppError(''); setSearchResults([]); setYouPanel(panel); if (panel === 'friends') void loadConnections(user || undefined).catch(reason => setAppError(readableError(reason, 'Could not load friends.'))); }} />}
-    </div><nav className="cozy-nav" aria-label="App navigation">{tabs.map(item => {
-      if (item.id === 'play') return <PlayNavButton key={`play-${user?.id || 'local'}`} userId={user?.id || 'local'} active={tab === 'play'} paused={v21Step !== null || youPanel !== null || replacementStep !== null} onOpen={() => setTab('play')} />;
+      {tab === 'you' && <YouTab username={profile?.username} memberSince={profile?.created_at} avatarUrl={level >= 5 ? profilePhotoPreview : null} onToday={() => setTab('today')} history={history} loadEarlier={loadEarlier} hasEarlier={hasEarlier} historyBusy={historyBusy} incomingRequestCount={incomingRequestCount} onOpenPanel={panel => { setAppError(''); setSearchResults([]); setYouPanel(panel); if (panel === 'friends') void loadConnections(user || undefined).catch(reason => setAppError(readableError(reason, 'Could not load friends.'))); }} />}
+    </div><nav className="lp-nav" aria-label="App navigation">{tabs.map(item => {
+      if (item.id === 'play') return <PlayNavButton inlineIntroduction key={`play-${user?.id || 'local'}`} userId={user?.id || 'local'} active={tab === 'play'} paused={v21Step !== null || youPanel !== null || replacementStep !== null} onOpen={() => setTab('play')} />;
       const locked = item.id === 'world';
-      return <button key={item.id} className={`${tab === item.id ? 'active' : ''} ${locked ? 'locked' : ''}`} disabled={locked} title={locked ? 'Coming later' : item.label} onClick={() => setTab(item.id)}><item.icon />{locked && <Lock className="nav-lock" />}<span>{item.label}</span></button>;
+      return <button key={item.id} aria-current={tab === item.id ? 'page' : undefined} className={`${tab === item.id ? 'active' : ''} ${locked ? 'locked' : ''}`} disabled={locked} title={locked ? 'Coming later' : item.label} onClick={() => setTab(item.id)}><item.icon />{locked && <Lock className="nav-lock" />}<span>{item.label}</span></button>;
     })}</nav>{profile && user && <YouToolsDialog panel={youPanel} setPanel={setYouPanel} userId={user.id} connections={connections} searchResults={searchResults} searchQuery={searchQuery} onSearchQueryChange={updateFriendSearch} searchPeople={searchPeople} sendFriendRequest={sendFriendRequest} acceptFriend={acceptFriend} declineFriend={declineFriend} unfriend={unfriend} xp={xp} level={level} streak={streak} saveSettings={saveSettings} signOut={signOut} usernameDraft={usernameDraft} setUsernameDraft={setUsernameDraft} cityDraft={cityDraft} setCityDraft={setCityDraft} citySelection={citySelection} setCitySelection={setCitySelection} profilePhoto={profilePhotoPreview} saveProfilePhoto={saveProfilePhoto} removeProfilePhoto={removeProfilePhoto} pushStatus={pushStatus} notificationPreferences={v21Notifications} notificationBusy={notificationBusy} notificationError={notificationError} setNotificationPreferences={setV21Notifications} enableNotifications={turnOnNotifications} saveNotificationPreferences={updateNotificationSettings} disableNotifications={turnOffNotifications} busy={accountBusy} accountError={appError} onAccountChanged={async () => { if (user) await Promise.all([loadConnections(user),loadAccount(user),loadFeed(feedMode,user)]); }} />}
       <Dialog open={replacementStep !== null} onOpenChange={open => { if (!open) setReplacementStep(null); }}><DialogContent className="replacement-dialog"><DialogHeader><DialogTitle>{replacementStep === 'confirm' ? 'Replace your current Wurd?' : 'A new day has started'}</DialogTitle><DialogDescription>{replacementStep === 'confirm' ? 'Posting a new Wurd will remove your existing active Wurd. This action cannot be undone.' : 'Your current Wurd will remain active until it expires, or you can replace it now with a new Wurd for today.'}</DialogDescription></DialogHeader>{replacementStep === 'confirm' ? <div className="replacement-actions"><Button variant="outline" onClick={() => setReplacementStep(null)}>Keep current Wurd</Button><Button onClick={() => { setReplacementStep(null); setReplacementMode(true); setTab('today'); }}>Replace &amp; post</Button></div> : <div className="replacement-actions"><Button variant="outline" onClick={() => setReplacementStep(null)}>Not now</Button><Button onClick={() => setReplacementStep('confirm')}>Post today&apos;s Wurd</Button></div>}</DialogContent></Dialog>
       <Dialog open={v21Step !== null} onOpenChange={open => { if (!open) setV21Step(null); }}><DialogContent className="v21-preview-dialog">
@@ -1546,6 +1504,6 @@ export default function CozyPreview() {
         {v21Step === 'notifications' && <><span className="v21-preview-label">V2.1 · 2 OF 2</span><div className="v21-feature-icon"><Bell /></div><DialogHeader><DialogTitle>Stay close to your people.</DialogTitle><DialogDescription>Choose what Wurd can tell you about. No daily reminders. No noise.</DialogDescription></DialogHeader><div className="v21-notification-types"><button type="button" className={v21Notifications.requests ? 'active' : ''} aria-pressed={v21Notifications.requests} onClick={() => setV21Notifications(current => ({ ...current, requests: !current.requests }))}><span><UserPlus /></span><div><strong>Friend requests</strong><small>When someone wants to connect.</small></div><i>{v21Notifications.requests && <Check />}</i></button><button type="button" className={v21Notifications.friendWords ? 'active' : ''} aria-pressed={v21Notifications.friendWords} onClick={() => setV21Notifications(current => ({ ...current, friendWords: !current.friendWords }))}><span className="wurd-alert-mark">w</span><div><strong>Friends&apos; Wurds</strong><small>When a friend posts a new Wurd.</small></div><i>{v21Notifications.friendWords && <Check />}</i></button><button type="button" className={v21Notifications.replies ? 'active' : ''} aria-pressed={v21Notifications.replies} onClick={() => setV21Notifications(current => ({ ...current, replies: !current.replies }))}><span><MessageCircle /></span><div><strong>Replies to your Wurd</strong><small>When someone replies to your post.</small></div><i>{v21Notifications.replies && <Check />}</i></button></div>{notificationError && <em className="notification-error">{notificationError}</em>}<div className="replacement-actions"><Button variant="outline" disabled={notificationBusy} onClick={() => { window.localStorage.setItem('wurd:v21:onboarding', 'done'); setV21Step(null); }}>Not now</Button><Button disabled={notificationBusy || (!v21Notifications.requests && !v21Notifications.friendWords && !v21Notifications.replies)} onClick={() => void turnOnNotifications()}>{notificationBusy ? 'Turning on…' : 'Turn on alerts'}</Button></div></>}
         {v21Step === 'complete' && <><span className="v21-preview-label">V2.1</span><div className="v21-feature-icon complete"><Check /></div><DialogHeader><DialogTitle>You&apos;re set.</DialogTitle><DialogDescription>Your selected alerts are on. You can change them later in Settings.</DialogDescription></DialogHeader><Button onClick={() => setV21Step(null)}>Done</Button></>}
       </DialogContent></Dialog>
-    </section></main>
+    </main>
   );
 }

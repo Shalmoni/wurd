@@ -3,6 +3,8 @@ import { createRoot } from 'react-dom/client';
 import CozyPreview from './app/CozyPreview';
 import AppErrorBoundary from './app/AppErrorBoundary';
 import './app/globals.css';
+import './app/product-design.css';
+import './app/product-live.css';
 
 const introPreview = import.meta.env.DEV && new URLSearchParams(location.search).get('preview') === 'play-intro';
 const launchPreview = import.meta.env.DEV && new URLSearchParams(location.search).get('preview') === 'card-review';

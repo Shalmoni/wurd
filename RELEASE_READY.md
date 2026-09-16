@@ -1,5 +1,38 @@
 # Wurd product-improvement release — 2026-09-16
 
+## Follow-up: approved product design integrated
+
+The production entry now uses the approved preview's visual design, not just a
+selection of its features. `app/product-design.css` is shared by the isolated
+prototype and the real application; `app/product-live.css` adapts existing live
+controls. Localhost `/` and `?preview=live` run this backend-connected version.
+
+- Compact, clickable level-local XP pill on Today, Play and You; opens Progress.
+- One scrolling page beneath the header, the redesigned daily window/filter row,
+  one-column cards, introduction to Play and useful empty states.
+- Compact daily composer with unlocked customization in the same dialog.
+- Play together menu, countdown, answer review/sealed state, results and explicit
+  next-round action using the existing real game RPCs and category schedule.
+- You profile, Friends / Progress / Settings, newest-first history with real
+  city snapshots and Load earlier days. Search is inside Friends, not a fourth tool.
+- Redesigned Progress summary and Settings dialogs; search requests are confirmed
+  before sending. Unreached rewards stay hidden through level 10.
+- Rounded-rectangle dialogs fix the privacy dialog's oval clipping.
+
+No XP thresholds, awards, user data, backend schema or authentication settings
+are changed in this follow-up. The prototype's fake users, local game state and
+review controls are not in the production entry or build.
+
+Acceptance: 35 local tests pass (32 release tests plus 3 unrelated local tests),
+including production design wiring and real XP thresholds. Production build with
+the GitHub Pages base path passes. A DEV-only fixture at
+`/tests/product-ui.html` renders the actual production components without a
+Supabase client. Browser checks cover 320/390px layouts, a 20-character Wurd,
+posting/customization, Friends/search, Progress, Settings, echo/reply opening,
+English correction, sealed answers and ended-results-to-next-round navigation.
+The fixture and isolated prototype state were checked absent from build assets.
+Real-account mutation and physical-phone push/crop tests were not performed.
+
 ## Release approach
 
 The production app keeps its existing authentication and data services. The isolated

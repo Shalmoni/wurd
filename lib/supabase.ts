@@ -5,7 +5,7 @@ const supabasePublishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as 
 // The complete local product preview shares UI components, but must never
 // initialize Auth, restore a live session, or call the production Data API.
 const isolatedProductPreview = import.meta.env.DEV && typeof window !== 'undefined'
-  && ['product', 'launch-review', 'card-review'].includes(new URLSearchParams(window.location.search).get('preview') || '');
+  && (window.location.pathname === '/tests/product-ui.html' || ['product', 'launch-review', 'card-review'].includes(new URLSearchParams(window.location.search).get('preview') || ''));
 
 const jwtClockRetryDelays = [600, 1400, 2800];
 

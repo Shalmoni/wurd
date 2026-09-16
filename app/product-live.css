@@ -1,0 +1,63 @@
+/* Production uses the approved product design with the existing live services. */
+.live-product .production-today { padding: 0; }
+.live-product .lp-feed { grid-auto-rows: 160px; }
+.live-product .lp-feed:has(.lp-empty), .live-product .lp-feed:has(.feed-empty) { grid-auto-rows: auto; }
+.live-product .lp-history h2 { line-height: 1.4; letter-spacing: -.035em; }
+.live-product .lp-history-count { flex-shrink: 0; }
+.live-product .lp-own-fit { margin: 0; }
+.live-product .lp-own-meta .echo-count { position: static; font: inherit; }
+.live-product .lp-own-meta .echo-count svg { width: 20px; height: 20px; }
+.live-product .lp-own-meta .own-reply-button { position: static; font: inherit; }
+.live-product .lp-nav > .play-nav-slot { flex: 1; min-width: 0; display: flex; }
+.live-product .lp-nav > .play-nav-slot > button { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 47px; font-size: 12px; color: #718179; }
+.live-product .lp-nav svg { width: 23px; height: 23px; }
+.live-product .lp-nav .play-nav-slot > button.active { color: #009d69; font-weight: 650; }
+.live-product .lp-nav .play-nav-slot > button.active::before { position: absolute; top: -10px; content: ''; width: 35px; height: 3px; background: #00bd7e; border-radius: 0 0 3px 3px; }
+.production-dialog.you-tool-dialog { width: min(500px,calc(100vw - 24px)) !important; max-height: calc(100dvh - 40px); padding: 25px !important; border-radius: 23px !important; display: flex; flex-direction: column; overflow-y: auto; gap: 16px; }
+.production-dialog > * { flex-shrink: 0; }
+.production-dialog { display: flex; flex-direction: column; overflow-y: auto; }
+.production-play-heading { position: relative; }
+.production-play-heading > .lp-icon { position: absolute; top: 15px; right: 0; }
+.production-round > .lp-icon { margin-left: auto; }
+.lp .production-result-people { color: #79917f; font-size: 11px; margin: 5px 0; overflow-wrap: anywhere; }
+.production-compose .confirm-word { width: 100%; padding: 0; }
+.production-compose .confirm-word h2 { font-size: 32px; overflow-wrap: anywhere; line-height: 1.4; }
+.production-compose .confirm-word > span { font-size: 11px; }
+.production-compose .confirm-word > p { font-size: 14px; }
+.production-compose .confirm-actions { display: flex; gap: 10px; }
+.production-compose .confirm-actions button { min-height: 46px; border-radius: 13px; font-size: 14px; }
+.production-compose .reward-customizer b { font-size: 12px; }
+.production-compose .style-options button, .production-compose .animation-options button, .production-compose .emoji-options button { min-height: 40px; font-size: 14px; }
+.production-compose .color-options button { width: 29px; height: 29px; }
+.production-dialog.you-tool-dialog [data-slot='dialog-title'] { font: 500 29px/1.15 Georgia,serif; letter-spacing: -.045em; }
+.production-dialog.you-tool-dialog [data-slot='dialog-description'] { font: 12px/1.5 system-ui; }
+.production-dialog .friend-search { display: flex; margin: 0; }
+.production-dialog .friend-search input { border: 0; box-shadow: none; padding: 0; flex: 1; min-width: 0; height: 40px; }
+.production-dialog .friend-search button { width: 40px; min-width: 40px; height: 40px; padding: 0; }
+.production-dialog .person-row { padding: 14px 0; gap: 10px; }
+.production-dialog .person-row strong { font: 600 14px/1.5 system-ui; overflow-wrap: anywhere; }
+.production-dialog .person-row small { font: 12px/1.5 system-ui; }
+.production-dialog .person-row button, .production-dialog .status-chip { font: 600 12px/1.4 system-ui; min-height: 36px; }
+.production-dialog .panel-empty { font-size: 14px; }
+.production-dialog .account-menu { margin: 0; }
+.production-dialog .account-menu button { font-size: 14px; }
+.production-dialog .xp-ladder { flex: none; max-height: none; overflow: visible; padding: 12px 0; }
+.production-dialog .xp-level-row { min-height: 77px; padding: 17px; border-radius: 14px; }
+.production-dialog .xp-level-row strong { font: 600 14px/1.4 system-ui; }
+.production-dialog .xp-level-row small { font: 12px/1.5 system-ui; margin-top: 3px; }
+.production-dialog .xp-level-row > b { font: 11px/1.4 system-ui; }
+.production-dialog .xp-explanation { margin: 0; }
+.production-dialog .settings-form label { font: 600 14px/1.4 system-ui; }
+.production-dialog .settings-form input { font-size: 16px; height: 46px; border-radius: 11px; }
+.production-dialog .settings-form > button, .production-dialog .logout-button { font: 600 14px/1.4 system-ui; min-height: 46px; border-radius: 13px; }
+.production-dialog .v21-notification-types strong { font-size: 14px; }
+.production-dialog .v21-notification-types small { font-size: 12px; }
+.account-tools-dialog { font: 14px/1.5 system-ui; }
+.account-tools-dialog [data-slot='dialog-title'] { font: 500 29px/1.15 Georgia,serif; letter-spacing: -.045em; }
+.account-tools-dialog button[data-slot='button'] { min-height: 44px; border-radius: 13px; }
+.live-product .app-error { position: static; display: block; width: 100%; transform: none; border-radius: 12px; margin: 10px 0; font: 14px/1.5 system-ui; }
+.lp-auth { min-height: 100dvh; height: auto; }
+.lp-auth .google-sign-in { font-family: Arial,sans-serif; }
+.lp-auth .google-sign-in svg { width: 20px; height: 20px; }
+.lp-auth .privacy-note { width: auto; height: auto; background: none; }
+@media(max-width:359px) { .production-dialog.you-tool-dialog { padding: 19px !important; } .live-product .lp-history article { gap: 10px; padding: 16px 12px; } }

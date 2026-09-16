@@ -6,7 +6,7 @@ import { activePost, addPost, award, canPost, levelProgress, localCities, localD
 import { answerBoard, normalizeAnswer } from '../lib/category-game';
 import { checkEnglishSpelling } from '../lib/english-spelling';
 import type { WordColor, WordStyle } from '../lib/supabase';
-import './local-product.css';
+import './product-design.css';
 
 const palette: { value: WordColor; hex: string; level: number }[] = [
   { value: 'mint', hex: '#00bd7e', level: 1 }, { value: 'blue', hex: '#007BF5', level: 4 }, { value: 'violet', hex: '#7B00F5', level: 4 }, { value: 'coral', hex: '#F57B00', level: 4 }, { value: 'yellow', hex: '#F5F500', level: 7 }, { value: 'lime', hex: '#7BF500', level: 7 }, { value: 'green', hex: '#00F500', level: 7 }, { value: 'cyan', hex: '#00F5F5', level: 7 }, { value: 'deepBlue', hex: '#0000F5', level: 7 }, { value: 'magenta', hex: '#F500F5', level: 7 }, { value: 'pink', hex: '#F5007B', level: 7 }, { value: 'red', hex: '#F50000', level: 7 },

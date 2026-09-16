@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Gamepad2 } from 'lucide-react';
+import { ArrowRight, Gamepad2, X } from 'lucide-react';
 import './play-discovery.css';
 
 // Per account and browser. Storage failures must never prevent navigation.
@@ -11,12 +11,23 @@ function hasSeenIntro(userId: string) {
   catch { return false; }
 }
 
-export default function PlayNavButton({ userId, active, paused, onOpen }: {
-  userId: string; active: boolean; paused: boolean; onOpen: () => void;
+export function PlayIntroduction({ userId, onOpen }: { userId: string; onOpen: () => void }) {
+  const [seen, setSeen] = useState(() => hasSeenIntro(userId));
+  function dismiss() {
+    handledThisSession.add(userId);
+    try { localStorage.setItem(storageKey(userId), 'done'); } catch { /* Session fallback. */ }
+    setSeen(true);
+  }
+  if (seen) return null;
+  return <aside className="lp-discovery"><div><span className="lp-kicker">SOMETHING TO PLAY TOGETHER</span><strong>Can you think like your people?</strong><p>One question. Secret answers. A shared reveal.</p></div><button className="lp-icon" aria-label="Dismiss Play introduction" onClick={dismiss}><X size={16} /></button><button className="lp-text-button" onClick={() => { dismiss(); onOpen(); }}>Try The common wurd <ArrowRight size={16} /></button></aside>;
+}
+
+export default function PlayNavButton({ userId, active, paused, onOpen, inlineIntroduction = false }: {
+  userId: string; active: boolean; paused: boolean; onOpen: () => void; inlineIntroduction?: boolean;
 }) {
   const [seen, setSeen] = useState(() => hasSeenIntro(userId));
   const [ready, setReady] = useState(false);
-  const visible = ready && !seen && !active && !paused;
+  const visible = ready && !seen && !active && !paused && !inlineIntroduction;
 
   const dismiss = useCallback(() => {
     handledThisSession.add(userId);

@@ -9,4 +9,15 @@
 .you-tool-dialog{max-height:85dvh;overflow-y:auto}.xp-ladder{min-height:240px}.xp-explanation{margin:16px 0}.account-menu+ .account-menu{margin-top:0}
 .auth-stage:has(.launch-welcome){overflow-y:auto}.today-app-header.browse-brand-header{height:auto!important;min-height:0!important;flex:0 0 auto!important;display:block;padding-bottom:18px!important}
 .privacy-note{display:block;margin:16px auto 0;color:#557365;font:13px system-ui;text-decoration:underline;text-underline-offset:3px}
+/* Dialogs must not inherit the global pill radius used by buttons. */
+.account-tools-dialog {
+  width: min(calc(100% - 32px), 430px);
+  max-width: calc(100% - 32px);
+  max-height: min(85dvh, calc(100dvh - 32px));
+  border-radius: 24px;
+  padding: 24px;
+  overflow-wrap: anywhere;
+}
+.account-tools-dialog [data-slot='dialog-header'] { padding-right: 28px; }
+.account-tools-dialog > [data-slot='dialog-close'] { width: 40px; height: 40px; }
 .today-app .wurd-cloud-card .live-person strong{font-size:15px}.today-app .wurd-cloud-card .live-person small{font-size:12px;line-height:1.35}.browse-post-cta{flex-shrink:0}.game-rules{color:#527361;font-size:14px;line-height:1.5;margin:20px 0}.game-rules summary{cursor:pointer;font-weight:650}

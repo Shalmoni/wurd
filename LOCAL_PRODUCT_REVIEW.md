@@ -82,5 +82,8 @@ names only; it does not send analytics anywhere.
   server-side safety enforcement, real push delivery, monitoring, final policies,
   branded-domain/Google-consent setup, and launch assets remain release work.
 
-Nothing in this pass has been pushed or deployed. Review the full experience first;
-then decide what to integrate into the live architecture.
+The original pass was isolated. The approved visual design has now been ported
+to the real app (see RELEASE_READY.md). Shared styles live in product-design.css;
+the backend-connected version is at localhost `/` or `?preview=live`.
+This prototype remains isolated for experimentation and never becomes the source
+of production accounts, game answers or XP.

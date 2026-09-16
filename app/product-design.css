@@ -1,3 +1,4 @@
+/* Shared by the approved design preview and the backend-connected app. */
 .lp { --lp-ink: #153c2e; --lp-muted: #60756c; --lp-green: #00bd7e; --lp-mint: #eafff4; color: var(--lp-ink); background: #fff; height: 100dvh; max-width: 680px; margin: 0 auto; display: flex; flex-direction: column; font: 15px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; overflow: hidden; isolation: isolate; }
 .lp *, .lp-dialog * { box-sizing: border-box; }
 .lp button, .lp-dialog button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
