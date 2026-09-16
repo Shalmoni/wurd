@@ -2,6 +2,10 @@ import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const supabasePublishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined;
+// The complete local product preview shares UI components, but must never
+// initialize Auth, restore a live session, or call the production Data API.
+const isolatedProductPreview = import.meta.env.DEV && typeof window !== 'undefined'
+  && ['product', 'launch-review', 'card-review'].includes(new URLSearchParams(window.location.search).get('preview') || '');
 
 const jwtClockRetryDelays = [600, 1400, 2800];
 
@@ -30,7 +34,7 @@ async function fetchWithJwtClockRetry(input: RequestInfo | URL, init?: RequestIn
 // an old hash from its page history and make auth-js warn that the recovered JWT
 // was "issued in the future" even though Supabase has already accepted the login.
 // Remove only that obsolete callback shape before the auth client initializes.
-if (typeof window !== 'undefined' && /(?:^#|&)access_token=/.test(window.location.hash)) {
+if (!isolatedProductPreview && typeof window !== 'undefined' && /(?:^#|&)access_token=/.test(window.location.hash)) {
   window.history.replaceState(
     window.history.state,
     '',
@@ -45,7 +49,7 @@ export const isSupabaseConfigured = Boolean(
   !supabasePublishableKey.includes('your_key'),
 );
 
-export const supabase = isSupabaseConfigured
+export const supabase = isSupabaseConfigured && !isolatedProductPreview
   ? createClient(supabaseUrl!, supabasePublishableKey!, {
       auth: {
         flowType: 'pkce',

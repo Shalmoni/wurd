@@ -3,15 +3,14 @@
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactNode, SyntheticEvent } from 'react';
 import type { User } from '@supabase/supabase-js';
+import PlayNavButton from './PlayNavButton';
+import AccountTools, { CardSafety, InviteButton, PrivacyNote, RecentXp } from './AccountTools';
+import { arrangeReplies, cloudReplies, type ReplyBox } from '../lib/reply-layout';
 import {
   Bell, Check, CircleUserRound, Clock3, Flame, Globe2, Lock, LogOut,
   MapPin, MessageCircle, RefreshCw, Search, Send, Settings, Share2, Sun, UserPlus, UsersRound,
   Trophy, Gamepad2,
 } from 'lucide-react';
-import { geoMercator, geoNaturalEarth1, geoPath } from 'd3-geo';
-import { feature } from 'topojson-client';
-import countries110 from 'world-atlas/countries-110m.json';
-import type { FeatureCollection } from 'geojson';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarImage } from '@/components/ui/avatar';
@@ -110,11 +109,8 @@ const levelDefinitions = [
   { level: 7, threshold: 2200, reward: 'Full color spectrum' },
   { level: 8, threshold: 3000, reward: 'Any emoji' },
   { level: 9, threshold: 4000, reward: 'Wurd animations' },
-  { level: 10, threshold: 5200, reward: 'Not decided yet' },
+  { level: 10, threshold: 5200, reward: 'More to come' },
 ] as const;
-
-const atlas = countries110 as unknown as { objects: { countries: Parameters<typeof feature>[1] } };
-const worldGeo = feature(countries110 as unknown as Parameters<typeof feature>[0], atlas.objects.countries) as unknown as FeatureCollection;
 
 const livePeople = [
   ['Noa','NO','HOPEFUL','Tel Aviv','just now','#ffe4ee',18], ['Eli','EL','COFFEE','Haifa','1m','#fff0bd',7], ['Maya','MA','RAIN','London','1m','#e8e3ff',24],
@@ -138,37 +134,6 @@ const friendCities: Record<string, string> = {
   'friend-becky': 'Tel Aviv', 'friend-daniel': 'San Francisco', 'friend-ari': 'Jerusalem', 'friend-rachel': 'London',
   'friend-david': 'New York', 'friend-noa': 'Haifa', 'friend-mika': 'Berlin', 'friend-sam': 'Toronto',
 };
-
-const wordSets: Record<Scope, { word: string; count: number; coordinates: [number, number]; size: string }[]> = {
-  World: [
-    { word: 'TIRED', count: 184291, coordinates: [12, 48], size: 'map-xl' },
-    { word: 'WAR', count: 143882, coordinates: [35, 31], size: 'map-lg' },
-    { word: 'SCHOOL', count: 98441, coordinates: [138, 36], size: 'map-md' },
-    { word: 'HOT', count: 77102, coordinates: [-61, -15], size: 'map-sm' },
-    { word: 'HAPPY', count: 61934, coordinates: [80, 18], size: 'map-sm' },
-  ],
-  Israel: [
-    { word: 'TIRED', count: 18422, coordinates: [34.78, 32.08], size: 'map-xl' },
-    { word: 'WAR', count: 14388, coordinates: [35.21, 31.77], size: 'map-lg' },
-    { word: 'HEAT', count: 8912, coordinates: [34.95, 29.56], size: 'map-md' },
-    { word: 'HOME', count: 7204, coordinates: [35.09, 32.79], size: 'map-sm' },
-  ],
-  Nearby: [
-    { word: 'BUILDING', count: 842, coordinates: [34.78, 32.08], size: 'map-xl' },
-    { word: 'COFFEE', count: 534, coordinates: [34.81, 32.10], size: 'map-lg' },
-    { word: 'WORK', count: 413, coordinates: [34.77, 32.05], size: 'map-md' },
-    { word: 'SEA', count: 288, coordinates: [34.75, 32.09], size: 'map-sm' },
-    { word: 'HOME', count: 244, coordinates: [34.79, 32.07], size: 'map-md' },
-    { word: 'HOT', count: 191, coordinates: [34.76, 32.11], size: 'map-sm' },
-    { word: 'BABY', count: 152, coordinates: [34.80, 32.06], size: 'map-sm' },
-    { word: 'CALM', count: 141, coordinates: [34.74, 32.08], size: 'map-sm' },
-  ],
-};
-
-const nearbyPositions = [
-  ['27%', '12%'], ['74%', '21%'], ['22%', '38%'], ['70%', '43%'],
-  ['30%', '60%'], ['75%', '64%'], ['24%', '82%'], ['69%', '84%'],
-] as const;
 
 function localDayKey() {
   const parts = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
@@ -315,11 +280,11 @@ function BrandHeader({ tab, submitted, submittedAt, now, emoji, color, wordStyle
       <div className="today-meta-row"><p>{submittedAt ? timeLeft(submittedAt, now) : '24h left'} · {locationLabel(city, countryCode)}</p><div className="own-wurd-reactions"><OwnReplies key={submittedAt || submitted} replies={replies} loading={repliesLoading} /><EchoStat count={echoes} color={wordColorValues[color]} /></div></div>
     </header>
   );
-  return <header className="cozy-header"><div className="cozy-logo">wurd</div></header>;
+  return <header className="today-app-header browse-brand-header">{topRow}</header>;
 }
 
 function OwnReplies({ replies, loading }: { replies: WurdReply[]; loading: boolean }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(() => new URLSearchParams(location.search).get('open') === 'replies');
   return <>
     <button type="button" className="own-reply-button" aria-label={`View replies to your Wurd (${replies.length})`} aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen(true)}><MessageCircle /><span>{replies.length}</span></button>
     <Dialog open={open} onOpenChange={setOpen}>
@@ -360,7 +325,7 @@ function wordLengthClass(word: string) {
   return 'word-fit-short';
 }
 
-function CardWord({ word, emoji, color, wordStyle = 'bold', animation = 'still' }: { word: string; emoji?: string | null; color?: string; wordStyle?: WordStyle; animation?: WordAnimation }) {
+export function CardWord({ word, emoji, color, wordStyle = 'bold', animation = 'still' }: { word: string; emoji?: string | null; color?: string; wordStyle?: WordStyle; animation?: WordAnimation }) {
   const frame = useRef<HTMLElement>(null);
   const text = useRef<HTMLSpanElement>(null);
   const [scale, setScale] = useState(1);
@@ -412,41 +377,41 @@ function ReplyStat({ count, open, onActivate }: { count: number; open: boolean; 
   return <button type="button" className="reply-count" aria-label={`${count} replies. Reply to this Wurd.`} aria-expanded={open} onClick={event => { event.stopPropagation(); onActivate(); }}><MessageCircle /><span>{count}</span></button>;
 }
 
-function FeedCard({ item, ownWord, friendState, previewStrength, pickerOpen, repliesOpen, onPickerChange, onEcho, onFriendRequest, onOpenReply }: { item: FeedWord; ownWord: string; now: number; friendState: CardFriendState; previewStrength?: number; pickerOpen: boolean; repliesOpen: boolean; onPickerChange: (open: boolean) => void; onEcho: (strength: number) => Promise<void>; onFriendRequest: () => void; onOpenReply: () => void }) {
+export function FeedCard({ item, friendState, previewStrength, pickerOpen, repliesOpen, onPickerChange, onEcho, onFriendRequest, onOpenReply }: { item: FeedWord; ownWord: string; now: number; friendState: CardFriendState; previewStrength?: number; pickerOpen: boolean; repliesOpen: boolean; onPickerChange: (open: boolean) => void; onEcho: (strength: number) => Promise<void>; onFriendRequest: () => void; onOpenReply: () => void }) {
   const name = usernameLabel(item.username);
-  const match = item.word.toLocaleUpperCase() === ownWord.toLocaleUpperCase();
   const avatar = profilePhotoUrl(item.avatar_url);
   const storedStrength = item.my_echo_strength ?? (item.echoed_by_me ? 2 : 0);
   const strength = Math.max(0, Math.min(3, previewStrength ?? storedStrength));
   const [draftStrength, setDraftStrength] = useState(strength);
   const [echoBusy, setEchoBusy] = useState(false);
-  const draftStrengthRef = useRef(strength);
-  const wasPickerOpen = useRef(false);
-  const activeStrength = pickerOpen ? draftStrength : strength;
+  const [echoError, setEchoError] = useState('');
+  const saving = useRef(false);
+  const activeStrength = pickerOpen || echoBusy ? draftStrength : strength;
   const strengthOption = echoStrengthOptions[Math.max(0, Math.min(3, draftStrength))];
   const otherEchoes = Math.max(0, item.echo_count - storedStrength);
   const displayedEchoes = otherEchoes + activeStrength;
   const replyCount = item.reply_count ?? 0;
   const content = <><div className="live-person">{avatar && <Avatar className="wurd-card-avatar"><AvatarImage src={avatar} alt="" /></Avatar>}<span><strong>{name}</strong><small className="card-city">{item.city || 'Location not added'}</small></span></div><CardWord word={item.word} emoji={item.emoji} color={wordColorValues[item.color]} wordStyle={item.word_style || 'bold'} animation={item.animation} /></>;
   const friendControl = friendState === 'none' ? <button type="button" className="card-friend-control" aria-label={`Send friend request to ${name}`} onClick={event => { event.stopPropagation(); onFriendRequest(); }}><UserPlus /></button> : friendState === 'outgoing' ? <span className="card-friend-control pending" aria-label={`Friend request to ${name} is pending`} title="Request pending"><Clock3 /></span> : null;
-  const reactions = (echoCount: number, personalStrength = 0) => <div className="card-reactions"><ReplyStat count={replyCount} open={repliesOpen} onActivate={onOpenReply} /><EchoStat passive={match} count={echoCount} color={wordColorValues[item.color]} strength={personalStrength} onActivate={match ? undefined : () => onPickerChange(!pickerOpen)} /></div>;
+  const reactions = (echoCount: number, personalStrength = 0) => <div className="card-reactions"><ReplyStat count={replyCount} open={repliesOpen} onActivate={onOpenReply} /><EchoStat passive={friendState === 'self'} count={echoCount} color={wordColorValues[item.color]} strength={personalStrength} onActivate={() => onPickerChange(!pickerOpen)} /></div>;
   const cardStyle = { '--word-color': wordColorValues[item.color] } as CSSProperties;
   useEffect(() => {
-    if (pickerOpen) {
-      draftStrengthRef.current = strength;
-      setDraftStrength(strength);
-    } else if (wasPickerOpen.current && draftStrengthRef.current !== strength) {
-      setEchoBusy(true);
-      void onEcho(draftStrengthRef.current).finally(() => setEchoBusy(false));
-    }
-    wasPickerOpen.current = pickerOpen;
-  }, [pickerOpen]);
+    if (!saving.current) setDraftStrength(strength);
+  }, [pickerOpen, strength]);
+  async function commitEcho(value: number | readonly number[]) {
+    const next = typeof value === 'number' ? value : value[0];
+    if (saving.current || next === strength) return;
+    saving.current = true;
+    setEchoBusy(true); setEchoError('');
+    try { await onEcho(next); }
+    catch { setDraftStrength(strength); setEchoError('Echo not saved. Please try again.'); }
+    finally { saving.current = false; setEchoBusy(false); }
+  }
   const toggleEchoPicker = () => onPickerChange(!pickerOpen);
-  if (match) return <article className={`live-card friend-square exact-match ${repliesOpen ? 'replies-open' : ''}`} style={cardStyle} aria-label={`${name} chose the same word as you`}>{friendControl}<div className="card-static-content">{content}</div>{reactions(item.echo_count)}</article>;
-  return <article data-echo-card={String(item.id)} className={`live-card friend-square ${activeStrength > 0 ? 'echoed' : ''} ${pickerOpen ? 'echo-picker-open' : ''} ${repliesOpen ? 'replies-open' : ''}`} style={cardStyle}>{friendControl}<div className="card-static-content">{content}</div>{pickerOpen && <div className="echo-strength-inline" style={{ '--word-color': wordColorValues[item.color], '--echo-strength-color': strengthOption.color } as CSSProperties} onClick={toggleEchoPicker}><div className="echo-strength-title"><span>How loud?</span><b>{strengthOption.label}</b></div><div className="echo-strength-control" onClick={event => event.stopPropagation()}><span className="echo-strength-dots" aria-hidden="true"><i /><i /><i /><i /></span><Slider min={0} max={3} step={1} value={[draftStrength]} disabled={echoBusy} onValueChange={value => { const next = Array.isArray(value) ? value[0] : value; draftStrengthRef.current = next; setDraftStrength(next); }} aria-label="Echo strength: Meh, Okay, or Wurd" /></div></div>}{reactions(displayedEchoes, activeStrength)}</article>;
+  return <article data-echo-card={String(item.id)} className={`live-card friend-square ${activeStrength > 0 ? 'echoed' : ''} ${pickerOpen ? 'echo-picker-open' : ''} ${repliesOpen ? 'replies-open' : ''}`} style={cardStyle}>{friendControl}<div className="card-static-content">{content}</div>{pickerOpen && <div className="echo-strength-inline" style={{ '--word-color': wordColorValues[item.color], '--echo-strength-color': strengthOption.color } as CSSProperties} onClick={toggleEchoPicker}><div className="echo-strength-title"><span>{echoBusy ? 'Saving…' : 'How loud?'}</span><b>{strengthOption.label}</b></div><div className="echo-strength-control" onClick={event => event.stopPropagation()}><span className="echo-strength-dots" aria-hidden="true"><i /><i /><i /><i /></span><Slider min={0} max={3} step={1} value={[draftStrength]} disabled={echoBusy} onValueChange={value => setDraftStrength(Array.isArray(value) ? value[0] : value)} onValueCommitted={value => void commitEcho(value)} aria-label="Echo strength: Meh, Okay, or Wurd" /></div></div>}{echoError && <p className="card-save-error" role="alert">{echoError}</p>}{reactions(displayedEchoes, activeStrength)}</article>;
 }
 
-function ReplyThread({ replies, currentUserId, loading, sending, error, onSubmit, onClose }: { replies: WurdReply[]; currentUserId: string | null; loading: boolean; sending: boolean; error: string; onSubmit: (word: string) => Promise<boolean>; onClose: () => void }) {
+export function ReplyThread({ replies, currentUserId, loading, sending, error, onSubmit, onClose }: { replies: WurdReply[]; currentUserId: string | null; loading: boolean; sending: boolean; error: string; onSubmit: (word: string) => Promise<boolean>; onClose: () => void }) {
   const input = useRef<HTMLInputElement>(null);
   useEffect(() => {
     const dismissKeyboard = (event: PointerEvent) => {
@@ -457,26 +422,30 @@ function ReplyThread({ replies, currentUserId, loading, sending, error, onSubmit
   }, []);
   const [draft, setDraft] = useState('');
   const [draftError, setDraftError] = useState('');
+  const [sentHere, setSentHere] = useState(false);
+  const [viewAll, setViewAll] = useState(false);
   const hasReplied = Boolean(currentUserId && replies.some(reply => reply.user_id === currentUserId));
   useEffect(() => {
-    if (!hasReplied) return;
+    if (!sentHere || viewAll) return;
     const timer = window.setTimeout(onClose, 900);
     return () => window.clearTimeout(timer);
-  }, [hasReplied]);
+  }, [sentHere, viewAll]);
 
   async function submit(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
     const clean = draft.trim();
     if (!clean || /\s/.test(clean)) { setDraftError('Reply with one Wurd — no spaces.'); return; }
     setDraftError('');
-    if (await onSubmit(clean.toUpperCase())) setDraft('');
+    if (await onSubmit(clean.toUpperCase())) { setDraft(''); setSentHere(true); }
   }
 
   return <section className="inline-reply-panel" aria-label="Reply to this Wurd">
     <div className="reply-composer-wrap">
-      {hasReplied ? <p className="reply-complete" role="status"><Check /> Reply sent</p> : <form className="reply-composer" onSubmit={submit}><Input ref={input} maxLength={20} value={draft} disabled={sending || loading} onChange={event => { setDraft(event.target.value); setDraftError(''); }} placeholder="Your Wurd…" aria-label="Your one-Wurd reply" /><Button type="submit" disabled={loading || sending || !draft.trim()} aria-label="Send reply"><Send /></Button></form>}
+      {hasReplied ? <p className="reply-complete" role="status"><Check /> {sentHere ? 'Reply sent' : 'You’ve replied'}</p> : <form className="reply-composer" onSubmit={submit}><Input ref={input} maxLength={20} value={draft} disabled={sending || loading} onChange={event => { setDraft(event.target.value); setDraftError(''); }} placeholder="Your Wurd…" aria-label="Your one-Wurd reply" /><Button type="submit" disabled={loading || sending || !draft.trim()} aria-label="Send reply"><Send /></Button></form>}
+      {replies.length > 0 && <button type="button" className="view-all-replies" aria-haspopup="dialog" onClick={() => setViewAll(true)}>View all {replies.length} {replies.length === 1 ? 'reply' : 'replies'}</button>}
       {(draftError || error) && <em className="reply-error">{draftError || error}</em>}
     </div>
+    <Dialog open={viewAll} onOpenChange={setViewAll}><DialogContent className="own-replies-dialog" data-reply-list><DialogHeader><DialogTitle>Replies</DialogTitle><DialogDescription>Every Wurd, and who said it.</DialogDescription></DialogHeader><div className="own-replies-list"><ul>{replies.map(reply => <li key={reply.id}><strong dir="auto">{reply.word}</strong><span>{usernameLabel(reply.username)}{reply.user_id === currentUserId ? ' · You' : ''}</span></li>)}</ul></div></DialogContent></Dialog>
   </section>;
 }
 
@@ -486,9 +455,10 @@ function sampleReplies(item: FeedWord, now: number): WurdReply[] {
   return Array.from({ length: item.reply_count ?? 3 }, (_, index) => ({ id: -(index + 1), daily_word_id: item.id, user_id: `preview-${names[index % names.length]}-${index}`, username: names[index % names.length], avatar_url: null, word: words[index % words.length], created_at: new Date(now - Math.max(2, (item.reply_count ?? 3) - index) * 7 * 60000).toISOString() }));
 }
 
-function FloatingReplies({ replies, currentUserId }: { replies: WurdReply[]; currentUserId: string | null }) {
+export function FloatingReplies({ replies: allReplies, currentUserId }: { replies: WurdReply[]; currentUserId: string | null }) {
+  const replies = cloudReplies(allReplies, currentUserId);
   const cloud = useRef<HTMLDivElement>(null);
-  const [positions, setPositions] = useState<{ x: number; y: number; width: number; height: number; font: number }[]>([]);
+  const [positions, setPositions] = useState<(ReplyBox | null)[]>([]);
   const signature = replies.map(reply => `${reply.id}:${reply.word}`).join('|');
   useLayoutEffect(() => {
     const field = cloud.current;
@@ -501,31 +471,13 @@ function FloatingReplies({ replies, currentUserId }: { replies: WurdReply[]; cur
       const bounds = field.getBoundingClientRect();
       const word = main.getBoundingClientRect();
       // Only the rendered letters need clearance, not the full word container.
-      const occupied = [{ x: word.left - bounds.left - 6, y: word.top - bounds.top - 4, width: word.width + 12, height: word.height + 8 }];
+      const obstacle = { x: word.left - bounds.left - 6, y: word.top - bounds.top - 4, width: word.width + 12, height: word.height + 8, font: 0 };
       const context = document.createElement('canvas').getContext('2d');
       if (!context || !bounds.width || !bounds.height) return;
-      const random = (n: number) => { const value = Math.sin(n * 12.9898 + 78.233) * 43758.5453; return value - Math.floor(value); };
-      const next: typeof positions = [];
-      for (let index = 0; index < replies.length; index++) {
-        let chosen: typeof positions[number] | undefined;
-        // Deterministic candidates preserve existing spots when a reply is appended.
-        for (let font = 12; font >= 2 && !chosen; font--) {
-          context.font = `700 ${font}px Georgia`;
-          const width = context.measureText(replies[index].word).width + 10;
-          const height = font + 9;
-          if (width > bounds.width || height > bounds.height) continue;
-          for (let attempt = 0; attempt < 800; attempt++) {
-            const seed = index * 1703 + attempt * 2;
-            const x = random(seed) * (bounds.width - width);
-            const y = random(seed + 1) * (bounds.height - height);
-            if (occupied.some(box => x < box.x + box.width && x + width > box.x && y < box.y + box.height && y + height > box.y)) continue;
-            chosen = { x, y, width, height, font };
-            break;
-          }
-        }
-        if (chosen) { occupied.push(chosen); next.push(chosen); }
-        else next.push({ x: 0, y: 0, width: 1, height: 1, font: 1 });
-      }
+      const next = arrangeReplies(replies.map(reply => reply.word), bounds.width, bounds.height, obstacle, (text, font) => {
+        context.font = `700 ${font}px Georgia`;
+        return context.measureText(text).width;
+      });
       setPositions(next);
     };
     const schedule = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(arrange); };
@@ -538,18 +490,18 @@ function FloatingReplies({ replies, currentUserId }: { replies: WurdReply[]; cur
     void document.fonts?.ready.then(schedule);
     return () => { disposed = true; cancelAnimationFrame(frame); observer.disconnect(); mutations.disconnect(); };
   }, [signature]);
-  return <div ref={cloud} className="floating-reply-cloud" aria-label={`${replies.length} floating replies`}>{replies.map((reply, index) => {
+  return <div ref={cloud} className="floating-reply-cloud" aria-label="Reply preview. Open replies to view all.">{replies.map((reply, index) => {
     const position = positions[index];
     if (!position) return null;
     return <div className={`floating-reply ${reply.user_id === currentUserId ? 'mine' : ''}`} key={reply.id} style={{ left: position.x, top: position.y, width: position.width, height: position.height, fontSize: position.font, '--drift-delay': `${-index * .73}s`, '--drift-duration': `${4 + index % 4}s` } as CSSProperties}><strong aria-label={reply.user_id === currentUserId ? `${reply.word}. Your reply` : undefined}>{reply.word}</strong></div>;
   })}</div>;
 }
 
-function WurdCard({ children, className, item, onDismiss }: { children: ReactNode; className: string; item: FeedWord; onDismiss: () => void }) {
+export function WurdCard({ children, className, item, onDismiss }: { children: ReactNode; className: string; item: FeedWord; onDismiss: () => void }) {
   const start = useRef<{ x: number; y: number; id: number } | null>(null);
   function begin(event: ReactPointerEvent<HTMLDivElement>) {
     start.current = null;
-    if (!event.isPrimary || event.button !== 0 || (event.target instanceof Element && event.target.closest('button, input, [role="slider"], .inline-reply-panel, .echo-strength-inline'))) return;
+    if (!event.isPrimary || event.button !== 0 || (event.target instanceof Element && event.target.closest('button, input, [role="slider"], [data-reply-list], .inline-reply-panel, .echo-strength-inline'))) return;
     start.current = { x: event.clientX, y: event.clientY, id: event.pointerId };
   }
   function finish(event: ReactPointerEvent<HTMLDivElement>) {
@@ -579,9 +531,12 @@ type TodayTabProps = {
   setEchoStrength: (id: number | string, strength: number) => Promise<void>;
   currentUserId: string | null;
   currentUsername: string;
+  onAccountChanged: () => Promise<void>;
+  hasPostedToday: boolean;
 };
 
-function TodayTab({ submitted, replacementMode, level, feed, feedLoading, now, spokeCount, feedMode, setFeedMode, setSubmitted, refreshFeed, friendStateFor, sendFriendRequest, echoStrengths, echoed, setEchoStrength, currentUserId, currentUsername }: TodayTabProps) {
+function TodayTab({ submitted, replacementMode, level, feed, feedLoading, now, spokeCount, feedMode, setFeedMode, setSubmitted, refreshFeed, friendStateFor, sendFriendRequest, echoStrengths, echoed, setEchoStrength, currentUserId, currentUsername, onAccountChanged, hasPostedToday }: TodayTabProps) {
+  const [composing, setComposing] = useState(false);
   const [draft, setDraft] = useState('');
   const [pending, setPending] = useState('');
   const [emoji, setEmoji] = useState<string | null>(null);
@@ -621,7 +576,7 @@ function TodayTab({ submitted, replacementMode, level, feed, feedLoading, now, s
     if (!replyTarget) return;
     const closeOnOutsidePress = (event: Event) => {
       const target = event.target;
-      if (target instanceof Element && target.closest(`[data-reply-card="${replyTarget.id}"]`)) return;
+      if (target instanceof Element && target.closest(`[data-reply-card="${replyTarget.id}"], [data-reply-list], [data-slot="dialog-overlay"]`)) return;
       setReplyTarget(null);
     };
     document.addEventListener('pointerdown', closeOnOutsidePress);
@@ -655,6 +610,7 @@ function TodayTab({ submitted, replacementMode, level, feed, feedLoading, now, s
         const result = await supabase.rpc('reply_to_wurd', { p_daily_word_id: target.id, p_word: word });
         if (result.error) throw result.error;
         id = Number(result.data);
+        void dispatchPushEvent('wurd_reply', id);
       }
       const nextReply: WurdReply = { id, daily_word_id: target.id, user_id: currentUserId, username: currentUsername || 'you', avatar_url: null, word, created_at: new Date().toISOString() };
       const nextRows = [...replyRows, nextReply];
@@ -670,7 +626,7 @@ function TodayTab({ submitted, replacementMode, level, feed, feedLoading, now, s
       setReplySending(false);
     }
   }
-  if (!submitted || replacementMode) return (
+  if ((!submitted && composing) || replacementMode) return (
     <section className="tab-view today-view"><div className="daily-prompt">
       {!pending ? <><span className="soft-icon"><Sun /></span><p>{todayDateTimeLabel()}</p><h1>What&apos;s your<br />word?</h1><form onSubmit={submit}><Input maxLength={20} value={draft} onChange={event => { setDraft(event.target.value); setError(''); }} placeholder="TYPE YOUR WORD" /><Button type="submit">Continue</Button></form>{error && <em>{error}</em>}</> :
       <div className="confirm-word"><span>YOUR WORD FOR {todayLabel().toUpperCase()}</span><h2 className={`word-style-${wordStyle} word-animation-${animation}`} style={{ color: wordColorValues[color] }}>{pending}{emoji && ` ${emoji}`}</h2><p>{replacementMode ? 'Posting this Wurd will remove your current active Wurd.' : 'This is the only Wurd you can post today.'}</p>
@@ -681,21 +637,22 @@ function TodayTab({ submitted, replacementMode, level, feed, feedLoading, now, s
           {level >= 9 && <section><b>ANIMATION</b><div className="animation-options">{animationChoices.map(item => <button className={animation === item.value ? 'active' : ''} onClick={() => setAnimation(item.value)} key={item.value}>{item.label}</button>)}</div></section>}
         </div>}
         {error && <em className="post-error">{error}</em>}
-        <div className="confirm-actions"><Button variant="outline" disabled={posting} onClick={() => setPending('')}>Go back</Button><Button disabled={posting} onClick={async () => { setPosting(true); setError(''); try { await setSubmitted({ word: pending, emoji, color, wordStyle, animation }); setPending(''); setDraft(''); } catch (reason) { setError(reason instanceof Error ? reason.message : 'Could not post your word.'); } finally { setPosting(false); } }}>{posting ? 'Posting…' : replacementMode ? 'Replace & post' : 'Post my word'}</Button></div>
+        <div className="confirm-actions"><Button variant="outline" disabled={posting} onClick={() => setPending('')}>Go back</Button><Button disabled={posting} onClick={async () => { setPosting(true); setError(''); try { await setSubmitted({ word: pending, emoji, color, wordStyle, animation }); setPending(''); setDraft(''); setComposing(false); } catch (reason) { setError(reason instanceof Error ? reason.message : 'Could not post your word.'); } finally { setPosting(false); } }}>{posting ? 'Posting…' : replacementMode ? 'Replace & post' : 'Post my word'}</Button></div>
       </div>}
-    </div></section>
+    </div>{!replacementMode && <Button variant="ghost" onClick={() => setComposing(false)}>Back to Today</Button>}</section>
   );
   const demoPeople = feedMode === 'New' ? [...livePeople] : [...livePeople].sort((left, right) => right[6] - left[6]);
   const demoFriends = [...friends].sort((left, right) => right.echoes - left.echoes);
   return (
     <section className="tab-view live-view">
+      {!submitted && <div className="browse-post-cta"><div><h2>{hasPostedToday ? 'Your Wurd has expired.' : 'What’s your word today?'}</h2><p>{hasPostedToday ? 'Come back tomorrow for a new Wurd.' : 'One word for your day. Your people can echo it back.'}</p></div>{!hasPostedToday && <Button onClick={() => setComposing(true)}>Post my Wurd</Button>}</div>}
       <div className="today-toolbar"><div className="today-feed-summary"><span><i />{isSupabaseConfigured ? `${spokeCount} posted` : feedMode === 'Friends' ? '8 friends posted' : '1,284 posted'}</span><small>Tap reply to respond · Tap the waves to echo</small></div><div className="today-controls"><div className="today-mode cozy-segments"><button className={feedMode === 'New' ? 'active' : ''} onClick={() => setFeedMode('New')}>New</button><button className={feedMode === 'Top' ? 'active' : ''} onClick={() => setFeedMode('Top')}>Top</button><button className={feedMode === 'Friends' ? 'active' : ''} onClick={() => setFeedMode('Friends')}>Friends</button></div><button className="feed-refresh" aria-label="Refresh today" title="Refresh" disabled={feedLoading} onClick={() => void refreshFeed()}><RefreshCw /></button></div></div>
       {isSupabaseConfigured ? <div className={feedMode === 'Friends' ? 'friends-card-grid' : 'live-grid'}>{feedLoading ? <p className="feed-empty">Finding today&apos;s words…</p> : feed.length ? feed.map(item => {
         const displayItem = { ...item, reply_count: Math.max(replyCountOverrides[String(item.id)] ?? 0, item.reply_count) };
         const repliesOpen = replyTarget?.id === item.id;
         const card = <FeedCard key={item.id} item={displayItem} ownWord={submitted} now={now} friendState={friendStateFor(item.user_id)} previewStrength={echoStrengths[String(item.id)]} pickerOpen={openEchoCardId === String(item.id)} repliesOpen={repliesOpen} onPickerChange={open => { if (open) setReplyTarget(null); setOpenEchoCardId(open ? String(item.id) : null); }} onFriendRequest={() => { setFriendRequestState('confirm'); setFriendTarget(item); }} onOpenReply={() => { if (repliesOpen) setReplyTarget(null); else openReplies(displayItem); }} onEcho={strength => setEchoStrength(item.id, strength)} />;
         const visibleReplies = repliesFor(item);
-        return <WurdCard className={`wurd-cloud-card ${repliesOpen ? 'composing-reply' : ''}`} key={item.id} item={item} onDismiss={() => { setOpenEchoCardId(null); setReplyTarget(null); }}>{card}<FloatingReplies replies={visibleReplies} currentUserId={currentUserId} />{repliesOpen && <ReplyThread key={item.id} onClose={() => setReplyTarget(current => current?.id === item.id ? null : current)} replies={replyRows} currentUserId={currentUserId} loading={replyLoading} sending={replySending} error={replyError} onSubmit={postReply} />}</WurdCard>;
+        return <WurdCard className={`wurd-cloud-card ${repliesOpen ? 'composing-reply' : ''}`} key={item.id} item={item} onDismiss={() => { setOpenEchoCardId(null); setReplyTarget(null); }}>{card}<CardSafety item={item} onChanged={onAccountChanged} /><FloatingReplies replies={visibleReplies} currentUserId={currentUserId} />{repliesOpen && <ReplyThread key={item.id} onClose={() => setReplyTarget(current => current?.id === item.id ? null : current)} replies={replyRows} currentUserId={currentUserId} loading={replyLoading} sending={replySending} error={replyError} onSubmit={postReply} />}</WurdCard>;
       }) : <p className="feed-empty">{feedMode === 'Friends' ? 'Your friends have not spoken yet.' : 'You are early. Today’s words will appear here.'}</p>}</div> : feedMode === 'Friends' ? <div className="friends-card-grid">{demoFriends.map(friend => <FriendCard key={friend.id} friend={friend} match={friend.word === submitted} echoed={echoed.includes(friend.id)} onEcho={() => void setEchoStrength(friend.id, echoed.includes(friend.id) ? 0 : 3)} />)}</div> : <div className="live-grid">{demoPeople.map((person, index) => <LiveCard key={`${person[0]}-${person[2]}`} person={person} echoed={echoed.includes(`live-${index}`)} onEcho={() => void setEchoStrength(`live-${index}`, echoed.includes(`live-${index}`) ? 0 : 3)} />)}</div>}
       <Dialog open={friendTarget !== null} onOpenChange={open => { if (!open && friendRequestState !== 'sending') setFriendTarget(null); }}><DialogContent className="friend-request-dialog"><DialogHeader><DialogTitle>{friendRequestState === 'sent' ? 'Request sent' : `Send friend request to ${usernameLabel(friendTarget?.username)}?`}</DialogTitle>{friendRequestState === 'sent' && <DialogDescription>They’ll see it in Friends.</DialogDescription>}</DialogHeader>{friendRequestState !== 'sent' && <div className="replacement-actions"><Button variant="outline" disabled={friendRequestState === 'sending'} onClick={() => setFriendTarget(null)}>Cancel</Button><Button disabled={friendRequestState === 'sending'} onClick={async () => { if (!friendTarget) return; setFriendRequestState('sending'); const sent = await sendFriendRequest(friendTarget.user_id); if (!sent) { setFriendRequestState('confirm'); return; } setFriendRequestState('sent'); window.setTimeout(() => setFriendTarget(null), 1100); }}>{friendRequestState === 'sending' ? 'Sending…' : 'Send'}</Button></div>}</DialogContent></Dialog>
     </section>
@@ -708,47 +665,7 @@ function FriendCard({ friend, match, echoed, onEcho }: { friend: typeof friends[
   return <article className={`live-card friend-square ${echoed ? 'echoed' : ''}`}><button className="card-echo-action" aria-pressed={echoed} aria-label={`${friend.name} chose ${friend.word}. Tap to echo.`} onClick={onEcho}>{content}</button><EchoStat count={friend.echoes + (echoed ? 1 : 0)} /></article>;
 }
 
-function WorldMap({ scope }: { scope: Scope }) {
-  if (scope === 'Nearby') return (
-    <div className="nearby-cloud" aria-label="Words near you today">
-      {wordSets.Nearby.map((item, index) => <div className={`nearby-word nearby-${index + 1}`} style={{ left: nearbyPositions[index][0], top: nearbyPositions[index][1] }} key={item.word}>
-        <strong>{item.word}</strong><span><i />{item.count.toLocaleString()}</span>
-      </div>)}
-    </div>
-  );
-  const width = 700;
-  const height = 360;
-  const projection = scope === 'World'
-    ? geoNaturalEarth1().fitExtent([[12, 12], [width - 12, height - 12]], worldGeo)
-    : geoMercator().center([34.82, 31.9]).scale(5200).translate([width / 2, height / 2]);
-  const makePath = geoPath(projection);
-  return (
-    <div className="real-map">
-      <svg viewBox={`0 0 ${width} ${height}`} aria-label={`${scope} word map`}>
-        <g className="countries">{worldGeo.features.map((country, index) => <path d={makePath(country) || ''} key={index} />)}</g>
-      </svg>
-      <div className="map-label-layer">{wordSets[scope].map(item => {
-        const point = projection(item.coordinates);
-        if (!point) return null;
-        return <div className={`real-map-word ${item.size}`} style={{ left: `${point[0] / width * 100}%`, top: `${point[1] / height * 100}%` }} key={item.word}><strong>{item.word}</strong><span><i />{item.count.toLocaleString()} today</span></div>;
-      })}</div>
-    </div>
-  );
-}
-
-function WorldTab() {
-  const [scope, setScope] = useState<Scope>('World');
-  const [day, setDay] = useState(4);
-  return (
-    <section className="tab-view world-view"><div className="cozy-title"><div><span>THE WORLD&apos;S WORDS</span><h1>World today</h1></div><b><i /> LIVE</b></div>
-      <div className="cozy-segments three scope-only">{(['World','Israel','Nearby'] as Scope[]).map(item => <button className={scope === item ? 'active' : ''} onClick={() => setScope(item)} key={item}>{item}</button>)}</div>
-      <WorldMap scope={scope} />
-      <div className="rewind-strip"><span>REWIND</span>{['AUG 29','30','31','SEP 1','TODAY'].map((date, index) => <button className={day === index ? 'active' : ''} onClick={() => setDay(index)} key={date}><i />{date}</button>)}</div>
-    </section>
-  );
-}
-
-function YouTab({ history, incomingRequestCount, onOpenPanel }: { history: DiaryWord[]; incomingRequestCount: number; onOpenPanel: (panel: Exclude<YouPanel, null>) => void }) {
+function YouTab({ history, incomingRequestCount, onOpenPanel, loadEarlier, hasEarlier, historyBusy }: { history: DiaryWord[]; incomingRequestCount: number; onOpenPanel: (panel: Exclude<YouPanel, null>) => void; loadEarlier: () => Promise<void>; hasEarlier: boolean; historyBusy: boolean }) {
   const dayTrack = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
@@ -769,7 +686,7 @@ function YouTab({ history, incomingRequestCount, onOpenPanel }: { history: Diary
         <button onClick={() => onOpenPanel('settings')}><Settings /><span>Settings</span></button>
       </div>
       {diary.length > 0 && <div className="calendar-swipe-cue">SWIPE DAYS ↑</div>}
-      {diary.length > 0 ? <div className="day-ribbon" ref={dayTrack} aria-label="Your recent words">{diary.map(item => <article className={`diary-day-card ${item.isToday ? 'is-today' : ''}`} key={item.id}><span>{item.weekday}</span><div className="day-date"><i>{item.month}</i><strong>{item.day}</strong></div><b className={`word-style-${item.wordStyle} word-animation-${item.animation}`} style={{ color: wordColorValues[item.color] }}>{item.word}{item.emoji && ` ${item.emoji}`}</b><small className="diary-location"><MapPin />{item.city || 'Location not added'}</small><EchoStat count={item.echoes} />{item.isToday && <em>TODAY</em>}</article>)}</div> : <div className="diary-empty"><span><Sun /></span><h2>Your words start here.</h2><p>Post your first word and it will become the first day in your story.</p></div>}
+      {diary.length > 0 ? <div className="day-ribbon" ref={dayTrack} aria-label="Your recent words">{hasEarlier && <button className="history-more" disabled={historyBusy} onClick={() => void loadEarlier()}>{historyBusy ? 'Loading…' : 'Load earlier Wurds'}</button>}{diary.map(item => <article className={`diary-day-card ${item.isToday ? 'is-today' : ''}`} key={item.id}><span>{item.weekday}</span><div className="day-date"><i>{item.month}</i><strong>{item.day}</strong></div><b className={`word-style-${item.wordStyle} word-animation-${item.animation}`} style={{ color: wordColorValues[item.color] }}>{item.word}{item.emoji && ` ${item.emoji}`}</b><small className="diary-location"><MapPin />{item.city || 'Location not added'}</small><EchoStat count={item.echoes} />{item.isToday && <em>TODAY</em>}</article>)}</div> : <div className="diary-empty"><span><Sun /></span><h2>Your words start here.</h2><p>Post your first word and it will become the first day in your story.</p></div>}
     </section>
   );
 }
@@ -810,9 +727,13 @@ type YouToolsDialogProps = {
   saveNotificationPreferences: (preferences: NotificationPreferences) => Promise<void>;
   disableNotifications: () => Promise<void>;
   busy: boolean;
+  onAccountChanged: () => Promise<void>;
+  accountError: string;
 };
 
 function YouToolsDialog(props: YouToolsDialogProps) {
+  const [settingsPage, setSettingsPage] = useState<'menu' | 'profile' | 'notifications'>('menu');
+  useEffect(() => { setSettingsPage('menu'); }, [props.panel]);
   const ladder = useRef<HTMLDivElement>(null);
   const cropFrame = useRef<HTMLDivElement>(null);
   const dragStart = useRef<{ pointerX: number; pointerY: number; offsetX: number; offsetY: number } | null>(null);
@@ -918,7 +839,8 @@ function YouToolsDialog(props: YouToolsDialogProps) {
   const nextLevel = levelDefinitions[props.level];
   return (<>
     <Dialog open={props.panel !== null && photoCrop === null} onOpenChange={open => { if (!open && !photoCrop) props.setPanel(null); }}>
-      <DialogContent className="you-tool-dialog">
+      <DialogContent className={`you-tool-dialog ${props.panel === 'settings' ? `settings-${settingsPage}` : ''}`}>
+        {props.accountError && <p role="alert" className="notification-error">{props.accountError}</p>}
         {props.panel === 'search' && <>
           <DialogHeader><DialogTitle>Find your people</DialogTitle><DialogDescription>Search by username, then send a friend request.</DialogDescription></DialogHeader>
           <form className="friend-search" onSubmit={event => { event.preventDefault(); void props.searchPeople(); }}><Input aria-label="Search username" value={props.searchQuery} onChange={event => props.onSearchQueryChange(event.target.value)} maxLength={24} placeholder="Start typing a username" autoComplete="off" /><Button type="submit" disabled={props.busy}><Search /> Search</Button></form>
@@ -929,24 +851,25 @@ function YouToolsDialog(props: YouToolsDialogProps) {
         </>}
         {props.panel === 'friends' && <>
           <DialogHeader><DialogTitle>Friends</DialogTitle><DialogDescription>Accept requests or see your people.</DialogDescription></DialogHeader>
-          <div className="people-list friendship-list">
+          <InviteButton /><div className="people-list friendship-list">{incoming.length > 0 && <h3 className="friend-group-label">Incoming requests</h3>}
             {incoming.map(item => <div className="person-row" key={item.id}><div><strong>{usernameLabel(item.other.username)}</strong><small>Wants to be friends</small></div><div className="request-response-actions"><Button size="sm" variant="outline" onClick={() => void props.declineFriend(item.id)} disabled={props.busy}>Decline</Button><Button size="sm" onClick={() => void props.acceptFriend(item.id)} disabled={props.busy}><Check /> Accept</Button></div></div>)}
-            {outgoing.map(item => <div className="person-row" key={item.id}><div><strong>{usernameLabel(item.other.username)}</strong><small>Request sent</small></div><span className="status-chip">Pending</span></div>)}
-            {accepted.map(item => <div className="person-row" key={item.id}><div><strong>{usernameLabel(item.other.username)}</strong><small><MapPin />{item.other.city || 'Location not added'}</small></div>{confirmUnfriendId === item.id ? <div className="unfriend-actions"><button type="button" className="unfriend-cancel" disabled={props.busy} onClick={() => setConfirmUnfriendId(null)}>Cancel</button><button type="button" className="unfriend-button" disabled={props.busy} onClick={async () => { if (await props.unfriend(item.id)) setConfirmUnfriendId(null); }}>Unfriend</button></div> : <button type="button" className="status-chip friend-status-button" onClick={() => setConfirmUnfriendId(item.id)}><Check /> Friends</button>}</div>)}
+            {outgoing.length > 0 && <h3 className="friend-group-label">Sent requests</h3>}{outgoing.map(item => <div className="person-row" key={item.id}><div><strong>{usernameLabel(item.other.username)}</strong><small>Request sent</small></div><span className="status-chip">Pending</span></div>)}
+            {accepted.length > 0 && <h3 className="friend-group-label">Your friends</h3>}{accepted.map(item => <div className="person-row" key={item.id}><div><strong>{usernameLabel(item.other.username)}</strong><small><MapPin />{item.other.city || 'Location not added'}</small></div>{confirmUnfriendId === item.id ? <div className="unfriend-actions"><button type="button" className="unfriend-cancel" disabled={props.busy} onClick={() => setConfirmUnfriendId(null)}>Cancel</button><button type="button" className="unfriend-button" disabled={props.busy} onClick={async () => { if (await props.unfriend(item.id)) setConfirmUnfriendId(null); }}>Unfriend</button></div> : <button type="button" className="status-chip friend-status-button" onClick={() => setConfirmUnfriendId(item.id)}><Check /> Friends</button>}</div>)}
             {props.connections.length === 0 && <p className="panel-empty">No friends or requests yet. Search for someone to get started.</p>}
           </div>
         </>}
         {props.panel === 'xp' && <>
-          <DialogHeader><DialogTitle>Your XP</DialogTitle><DialogDescription>Every Wurd, friendship, and echo received moves you forward.</DialogDescription></DialogHeader>
+          <DialogHeader><DialogTitle>Your XP</DialogTitle><DialogDescription>Wurds, friendships, echoes received and matching answers in Play move you forward.</DialogDescription></DialogHeader>
           <section className="xp-summary-card"><div><span>LEVEL</span><strong>{props.level}</strong><small><Flame /> {props.streak} day streak</small></div><div className="xp-summary-progress"><strong>{props.level >= 10 ? `${xpProgress.earned} XP` : `${xpProgress.earned} / ${xpProgress.required} XP`}</strong><i><b style={{ width: `${xpProgress.percent}%` }} /></i><small>{nextLevel ? `${xpProgress.remaining} XP to Level ${nextLevel.level}` : 'Highest level reached'}</small></div>{nextLevel && <p><span>NEXT UNLOCK</span><strong>???</strong></p>}</section>
-          <div className="xp-ladder" ref={ladder} aria-label="Level progression"><div className="xp-ladder-more" aria-label="More levels coming"><i /><span>•••</span></div>{[...levelDefinitions].reverse().map(item => {
+          <RecentXp /><div className="xp-ladder" ref={ladder} aria-label="Level progression"><div className="xp-ladder-more" aria-label="More levels coming"><i /><span>•••</span></div>{[...levelDefinitions].reverse().map(item => {
             const state = item.level < props.level ? 'completed' : item.level === props.level ? 'current' : 'upcoming';
             const reward = item.level <= props.level ? item.reward : '???';
             return <article className={`xp-level-row ${state}`} key={item.level}><span className="xp-level-node">{state === 'completed' ? <Check /> : state === 'current' ? item.level : <Lock />}</span><div><strong>Level {item.level}</strong><small>{reward}</small></div><b>{item.threshold.toLocaleString()} XP</b></article>;
           })}</div>
         </>}
         {props.panel === 'settings' && <>
-          <DialogHeader><DialogTitle>Settings</DialogTitle><DialogDescription>Change the name and city people see beside your word.</DialogDescription></DialogHeader>
+          <DialogHeader><DialogTitle>{settingsPage === 'profile' ? 'Username & city' : settingsPage === 'notifications' ? 'Notifications' : 'Settings'}</DialogTitle><DialogDescription>Make wurd yours.</DialogDescription></DialogHeader>
+          {settingsPage === 'menu' ? <div className="account-menu"><button onClick={() => setSettingsPage('profile')}><CircleUserRound /><span>Username, city & photo</span><span>›</span></button><button onClick={() => setSettingsPage('notifications')}><Bell /><span>Notifications</span><span>›</span></button></div> : <Button variant="ghost" onClick={() => setSettingsPage('menu')}>← Settings</Button>}
           {props.level >= 5 && <section className="profile-photo-setting">
             <div className="profile-photo-preview">{props.profilePhoto ? <img src={props.profilePhoto} alt="Your profile preview" /> : <CircleUserRound />}</div>
             <div><strong>Profile photo</strong><small>Shown as a small circle beside your Wurds.</small><div className="profile-photo-actions"><label htmlFor="profile-photo-input">{props.profilePhoto ? 'Change photo' : 'Choose photo'}</label>{props.profilePhoto && <button type="button" disabled={photoBusy || props.busy} onClick={() => void props.removeProfilePhoto()}>Remove</button>}</div></div>
@@ -957,9 +880,9 @@ function YouToolsDialog(props: YouToolsDialogProps) {
             }} />
             {photoError && !photoCrop && <em className="profile-photo-error">{photoError}</em>}
           </section>}
-          <section className="notification-settings"><div><strong>Notifications</strong><small>{props.pushStatus === 'enabled' ? 'On for this device' : props.pushStatus === 'denied' ? 'Blocked in device settings' : props.pushStatus === 'unsupported' ? 'Not supported on this device' : 'Off for this device'}</small></div><div className="v21-notification-types compact"><button type="button" className={props.notificationPreferences.requests ? 'active' : ''} aria-pressed={props.notificationPreferences.requests} disabled={props.notificationBusy || props.pushStatus === 'unsupported'} onClick={() => { const next = { ...props.notificationPreferences, requests: !props.notificationPreferences.requests }; props.setNotificationPreferences(next); if (props.pushStatus === 'enabled') void props.saveNotificationPreferences(next); }}><span><UserPlus /></span><div><strong>Friend requests</strong><small>When someone wants to connect.</small></div><i>{props.notificationPreferences.requests && <Check />}</i></button><button type="button" className={props.notificationPreferences.friendWords ? 'active' : ''} aria-pressed={props.notificationPreferences.friendWords} disabled={props.notificationBusy || props.pushStatus === 'unsupported'} onClick={() => { const next = { ...props.notificationPreferences, friendWords: !props.notificationPreferences.friendWords }; props.setNotificationPreferences(next); if (props.pushStatus === 'enabled') void props.saveNotificationPreferences(next); }}><span className="wurd-alert-mark">w</span><div><strong>Friends&apos; Wurds</strong><small>When a friend posts a new Wurd.</small></div><i>{props.notificationPreferences.friendWords && <Check />}</i></button></div>{props.notificationError && <em className="notification-error">{props.notificationError}</em>}{props.pushStatus === 'enabled' ? <Button type="button" variant="outline" disabled={props.notificationBusy} onClick={() => void props.disableNotifications()}>Turn off on this device</Button> : <Button type="button" disabled={props.notificationBusy || props.pushStatus === 'unsupported' || (!props.notificationPreferences.requests && !props.notificationPreferences.friendWords)} onClick={() => void props.enableNotifications()}>{props.notificationBusy ? 'Turning on…' : 'Turn on alerts'}</Button>}</section>
-          <form className="settings-form" onSubmit={event => void props.saveSettings(event)}><label htmlFor="settings-username">Username</label><Input id="settings-username" maxLength={24} value={props.usernameDraft} onChange={event => props.setUsernameDraft(event.target.value)} /><label htmlFor="settings-city">City</label><CityPicker id="settings-city" query={props.cityDraft} selected={props.citySelection} onQueryChange={props.setCityDraft} onSelect={props.setCitySelection} /><Button type="submit" disabled={props.busy}>Save changes</Button></form>
-          <Button className="logout-button" variant="outline" onClick={() => void props.signOut()}><LogOut /> Log out</Button>
+          <section className="notification-settings"><div><strong>Notifications</strong><small>{props.pushStatus === 'enabled' ? 'On for this device' : props.pushStatus === 'denied' ? 'Blocked in device settings' : props.pushStatus === 'unsupported' ? 'Not supported on this device' : 'Off for this device'}</small></div><div className="v21-notification-types compact"><button type="button" className={props.notificationPreferences.requests ? 'active' : ''} aria-pressed={props.notificationPreferences.requests} disabled={props.notificationBusy || props.pushStatus === 'unsupported'} onClick={() => { const next = { ...props.notificationPreferences, requests: !props.notificationPreferences.requests }; props.setNotificationPreferences(next); if (props.pushStatus === 'enabled') void props.saveNotificationPreferences(next); }}><span><UserPlus /></span><div><strong>Friend requests</strong><small>When someone wants to connect.</small></div><i>{props.notificationPreferences.requests && <Check />}</i></button><button type="button" className={props.notificationPreferences.friendWords ? 'active' : ''} aria-pressed={props.notificationPreferences.friendWords} disabled={props.notificationBusy || props.pushStatus === 'unsupported'} onClick={() => { const next = { ...props.notificationPreferences, friendWords: !props.notificationPreferences.friendWords }; props.setNotificationPreferences(next); if (props.pushStatus === 'enabled') void props.saveNotificationPreferences(next); }}><span className="wurd-alert-mark">w</span><div><strong>Friends&apos; Wurds</strong><small>When a friend posts a new Wurd.</small></div><i>{props.notificationPreferences.friendWords && <Check />}</i></button><button type="button" className={props.notificationPreferences.replies ? 'active' : ''} aria-pressed={props.notificationPreferences.replies} disabled={props.notificationBusy || props.pushStatus === 'unsupported'} onClick={() => { const next = { ...props.notificationPreferences, replies: !props.notificationPreferences.replies }; props.setNotificationPreferences(next); if (props.pushStatus === 'enabled') void props.saveNotificationPreferences(next); }}><span><MessageCircle /></span><div><strong>Replies to your Wurd</strong><small>When someone replies to your post.</small></div><i>{props.notificationPreferences.replies && <Check />}</i></button></div>{props.notificationError && <em className="notification-error">{props.notificationError}</em>}{props.pushStatus === 'enabled' ? <Button type="button" variant="outline" disabled={props.notificationBusy} onClick={() => void props.disableNotifications()}>Turn off on this device</Button> : <Button type="button" disabled={props.notificationBusy || props.pushStatus === 'unsupported' || (!props.notificationPreferences.requests && !props.notificationPreferences.friendWords && !props.notificationPreferences.replies)} onClick={() => void props.enableNotifications()}>{props.notificationBusy ? 'Turning on…' : 'Turn on alerts'}</Button>}</section>
+          <form className="settings-form" onSubmit={event => void props.saveSettings(event)}><label htmlFor="settings-username">Username</label><Input id="settings-username" maxLength={24} value={props.usernameDraft} onChange={event => props.setUsernameDraft(event.target.value)} /><label htmlFor="settings-city">City (optional)</label><CityPicker id="settings-city" query={props.cityDraft} selected={props.citySelection} onQueryChange={props.setCityDraft} onSelect={props.setCitySelection} /><Button type="submit" disabled={props.busy}>Save changes</Button></form>
+          <AccountTools onChanged={props.onAccountChanged} /><Button className="logout-button" variant="outline" onClick={() => void props.signOut()}><LogOut /> Log out</Button>
         </>}
       </DialogContent>
     </Dialog>
@@ -986,12 +909,13 @@ function GoogleLogo() {
 function CityPicker({ id, query, selected, onQueryChange, onSelect }: { id: string; query: string; selected: CityChoice | null; onQueryChange: (value: string) => void; onSelect: (value: CityChoice | null) => void }) {
   const [results, setResults] = useState<CityChoice[]>([]);
   const [searching, setSearching] = useState(false);
+  const [cityError, setCityError] = useState('');
   useEffect(() => {
     const clean = query.trim();
-    if (selected || clean.length < 2) { setResults([]); return; }
+    if (selected || clean.length < 2) { setResults([]); setCityError(''); return; }
     const controller = new AbortController();
     const timer = window.setTimeout(async () => {
-      setSearching(true);
+      setSearching(true); setCityError('');
       try {
         const response = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(clean)}&count=8&language=en&format=json`, { signal: controller.signal });
         if (!response.ok) throw new Error('City search failed');
@@ -1001,12 +925,12 @@ function CityPicker({ id, query, selected, onQueryChange, onSelect }: { id: stri
           .map(item => ({ name: item.name, country: item.country!, countryCode: item.country_code! }));
         setResults(cities.filter((item, index) => cities.findIndex(match => match.name === item.name && match.countryCode === item.countryCode) === index).slice(0, 6));
       } catch (reason) {
-        if (!(reason instanceof DOMException && reason.name === 'AbortError')) setResults([]);
+        if (!(reason instanceof DOMException && reason.name === 'AbortError')) { setResults([]); setCityError('City search is unavailable. Try again, or leave your city blank for now.'); }
       } finally { setSearching(false); }
     }, 350);
     return () => { window.clearTimeout(timer); controller.abort(); };
   }, [query, selected]);
-  return <div className="city-picker"><Input id={id} maxLength={80} autoComplete="off" value={query} onChange={event => { onSelect(null); onQueryChange(event.target.value); }} placeholder="Start typing a city" aria-autocomplete="list" aria-expanded={results.length > 0} />{searching && <small className="city-searching">Finding cities…</small>}{results.length > 0 && <div className="city-results" role="listbox" aria-label="Matching cities">{results.map(city => <button type="button" role="option" aria-selected={false} key={`${city.name}-${city.countryCode}`} onClick={() => { onSelect(city); onQueryChange(`${city.name}, ${city.country}`); setResults([]); }}><strong>{city.name}</strong><span>{city.country}</span></button>)}</div>}</div>;
+  return <div className="city-picker"><Input id={id} maxLength={80} autoComplete="off" value={query} onChange={event => { onSelect(null); onQueryChange(event.target.value); }} placeholder="Start typing a city" aria-autocomplete="list" aria-expanded={results.length > 0} />{cityError && <small role="alert">{cityError}</small>}{searching && <small className="city-searching">Finding cities…</small>}{results.length > 0 && <div className="city-results" role="listbox" aria-label="Matching cities">{results.map(city => <button type="button" role="option" aria-selected={false} key={`${city.name}-${city.countryCode}`} onClick={() => { onSelect(city); onQueryChange(`${city.name}, ${city.country}`); setResults([]); }}><strong>{city.name}</strong><span>{city.country}</span></button>)}</div>}</div>;
 }
 
 const tabs: { id: Tab; label: string; icon: typeof Sun }[] = [
@@ -1037,6 +961,9 @@ export default function CozyPreview() {
   const [ownFeedWord, setOwnFeedWord] = useState<FeedWord | null>(null);
   const [spokeCount, setSpokeCount] = useState(0);
   const [history, setHistory] = useState<DiaryWord[]>([]);
+  const [hasEarlier, setHasEarlier] = useState(false);
+  const [historyBusy, setHistoryBusy] = useState(false);
+  const [offline, setOffline] = useState(!navigator.onLine);
   const [connections, setConnections] = useState<Friendship[]>([]);
   const [searchResults, setSearchResults] = useState<ProfileSummary[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -1054,12 +981,13 @@ export default function CozyPreview() {
   const [replacementStep, setReplacementStep] = useState<'explain' | 'confirm' | null>(null);
   const [replacementMode, setReplacementMode] = useState(false);
   const [v21Step, setV21Step] = useState<'home' | 'open-installed' | 'notifications' | 'complete' | null>(null);
-  const [v21Notifications, setV21Notifications] = useState<NotificationPreferences>({ requests: true, friendWords: true });
+  const [v21Notifications, setV21Notifications] = useState<NotificationPreferences>({ requests: true, friendWords: true, replies: false });
   const [pushStatus, setPushStatus] = useState<PushStatus>('prompt');
   const [notificationBusy, setNotificationBusy] = useState(false);
   const [notificationError, setNotificationError] = useState('');
   const friendSearchTimer = useRef<number | null>(null);
   const accountLoadGuard = useRef(createAccountLoadGuard());
+  const feedLoadId = useRef(0);
 
   async function loadAccount(activeUser: User) {
     if (!supabase) return;
@@ -1068,14 +996,14 @@ export default function CozyPreview() {
     try {
       const [profileResult, historyResult] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', activeUser.id).single(),
-        supabase.rpc('my_word_history', { p_limit: 14 }),
+        supabase.rpc('my_history_page', { p_limit: 20 }),
       ]);
       // Timestamps are assigned by the server; do not reject a saved post just
       // because this device's clock is slightly behind the server.
-      let wordResult = await supabase.from('daily_words').select('id, local_date, word, emoji, color, word_style, animation, created_at').eq('user_id', activeUser.id).gt('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()).order('created_at', { ascending: false }).limit(1);
+      let wordResult = await supabase.from('daily_words').select('id, local_date, word, emoji, color, word_style, animation, created_at').eq('user_id', activeUser.id).is('replaced_at', null).gt('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()).order('created_at', { ascending: false }).limit(1);
       // Keeps localhost usable until the V2 database migration is released.
       if (wordResult.error && /animation/i.test(wordResult.error.message)) {
-        wordResult = await supabase.from('daily_words').select('id, local_date, word, emoji, color, word_style, created_at').eq('user_id', activeUser.id).gt('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()).order('created_at', { ascending: false }).limit(1) as typeof wordResult;
+        wordResult = await supabase.from('daily_words').select('id, local_date, word, emoji, color, word_style, created_at').eq('user_id', activeUser.id).is('replaced_at', null).gt('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()).order('created_at', { ascending: false }).limit(1) as typeof wordResult;
       }
       if (!accountLoadGuard.current.isCurrent(request)) return;
       if (profileResult.error) throw profileResult.error;
@@ -1090,6 +1018,7 @@ export default function CozyPreview() {
       setCityDraft(loadedProfile.city || '');
       setCitySelection(loadedProfile.city ? { name: loadedProfile.city, country: '', countryCode: loadedProfile.country_code || '' } : null);
       setHistory(((historyResult.data || []) as DiaryWord[]).filter(item => item.local_date >= diaryLaunchDate));
+      setHasEarlier((historyResult.data || []).length === 20);
       const activeWord = wordResult.data?.[0];
       if (activeWord) {
         setSubmittedState(activeWord.word);
@@ -1115,8 +1044,10 @@ export default function CozyPreview() {
 
   async function loadFeed(mode = feedMode, activeUser = user) {
     if (!supabase || !activeUser) return;
+    const request = ++feedLoadId.current;
     setFeedLoading(true);
     const result = await supabase.rpc('feed_words', { p_date: localDayKey(), p_limit: 0, p_friends_only: mode === 'Friends' });
+    if (request !== feedLoadId.current) return;
     setFeedLoading(false);
     if (result.error) throw result.error;
     const rows = ((result.data || []) as FeedWord[]).map((item, index) => ({
@@ -1139,6 +1070,25 @@ export default function CozyPreview() {
     });
     setFeed(sortedRows);
   }
+
+  async function loadEarlier() {
+    if (!supabase || historyBusy || !history.length) return;
+    setHistoryBusy(true);
+    try {
+      const result = await supabase.rpc('my_history_page', { p_before: history[history.length - 1].created_at, p_limit: 20 });
+      if (result.error) throw result.error;
+      const next = (result.data || []) as DiaryWord[];
+      setHistory(current => [...new Map([...current, ...next].map(row => [row.id, row])).values()]);
+      setHasEarlier(next.length === 20);
+    } catch (e) { setAppError(readableError(e, 'Could not load earlier Wurds.')); }
+    finally { setHistoryBusy(false); }
+  }
+
+  useEffect(() => {
+    const update = () => setOffline(!navigator.onLine);
+    window.addEventListener('online', update); window.addEventListener('offline', update);
+    return () => { window.removeEventListener('online', update); window.removeEventListener('offline', update); };
+  }, []);
 
   async function loadConnections(activeUser = user) {
     if (!supabase || !activeUser) return;
@@ -1195,7 +1145,7 @@ export default function CozyPreview() {
         void loadAccount(session.user).catch(reason => setAppError(readableError(reason, 'Could not load your account.')));
         void loadConnections(session.user).catch(reason => console.error('Could not load friendships', reason));
       }
-      else { accountLoadGuard.current.invalidate(); setProfile(null); setProfilePhotoPreview(''); setSubmittedState(''); setSubmittedAt(null); setSubmittedLocalDate(null); setFeed([]); setOwnFeedWord(null); setHistory([]); setConnections([]); }
+      else { accountLoadGuard.current.invalidate(); feedLoadId.current++; setProfile(null); setProfilePhotoPreview(''); setSubmittedState(''); setSubmittedAt(null); setSubmittedLocalDate(null); setFeed([]); setOwnFeedWord(null); setHistory([]); setConnections([]); }
     });
     return () => { live = false; listener.subscription.unsubscribe(); };
   }, []);
@@ -1245,7 +1195,7 @@ export default function CozyPreview() {
   }, [dayKey]);
 
   useEffect(() => {
-    if (!user || !submitted || tab !== 'today') return;
+    if (!user || tab !== 'today') return;
     void loadFeed(feedMode, user).catch(reason => setAppError(readableError(reason, 'Could not load today’s words.')));
   }, [user, submitted, feedMode, tab]);
 
@@ -1329,7 +1279,8 @@ export default function CozyPreview() {
       const result = normalizedStrength === 0
         ? await supabase.rpc('un_echo_word', { p_daily_word_id: id })
         : await supabase.rpc('set_echo_strength', { p_daily_word_id: id, p_strength: normalizedStrength });
-      if (result.error) { setAppError(result.error.message); return; }
+      if (result.error) { setAppError(result.error.message); throw new Error(result.error.message); }
+      setAppError('');
       setFeed(current => current.map(item => {
         if (item.id !== id) return item;
         const previousStrength = item.my_echo_strength ?? (item.echoed_by_me ? 2 : 0);
@@ -1340,7 +1291,7 @@ export default function CozyPreview() {
           my_echo_strength: normalizedStrength,
         };
       }));
-    }
+    } else { throw new Error('Sign in again to save your echo.'); }
   }
 
   async function signIn() {
@@ -1357,9 +1308,9 @@ export default function CozyPreview() {
     const clean = usernameDraft.trim().toLowerCase();
     const city = citySelection?.name.trim() || '';
     if (!/^[a-z0-9_]{3,24}$/.test(clean)) { setAppError('Use 3–24 letters, numbers, or underscores.'); return; }
-    if (city.length < 2) { setAppError('Add the city you want shown beside your words.'); return; }
+    if (cityDraft.trim() && !citySelection) { setAppError('Choose a city from the suggestions, or leave it blank.'); return; }
     setAccountBusy(true);
-    const { error } = await supabase.from('profiles').update({ username: clean, city, country_code: citySelection?.countryCode || null, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone }).eq('id', user.id);
+    const { error } = await supabase.from('profiles').update({ username: clean, city: city || null, country_code: citySelection?.countryCode || null, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone }).eq('id', user.id);
     setAccountBusy(false);
     if (error) { setAppError(error.code === '23505' ? 'That username is already taken.' : error.message); return; }
     await loadAccount(user);
@@ -1462,9 +1413,9 @@ export default function CozyPreview() {
     const clean = usernameDraft.trim().toLowerCase();
     const city = citySelection?.name.trim() || '';
     if (!/^[a-z0-9_]{3,24}$/.test(clean)) { setAppError('Use 3–24 letters, numbers, or underscores.'); return; }
-    if (city.length < 2) { setAppError('Add the city you want shown beside your words.'); return; }
+    if (cityDraft.trim() && !citySelection) { setAppError('Choose a city from the suggestions, or leave it blank.'); return; }
     setAccountBusy(true);
-    const { error } = await supabase.from('profiles').update({ username: clean, city, country_code: citySelection?.countryCode || null }).eq('id', user.id);
+    const { error } = await supabase.from('profiles').update({ username: clean, city: city || null, country_code: citySelection?.countryCode || null }).eq('id', user.id);
     setAccountBusy(false);
     if (error) { setAppError(error.code === '23505' ? 'That username is already taken.' : error.message); return; }
     await loadAccount(user);
@@ -1529,15 +1480,16 @@ export default function CozyPreview() {
     else setYouPanel(null);
   }
 
+  if (!import.meta.env.DEV && !isSupabaseConfigured) return <main className="auth-stage"><div className="auth-card"><div className="cozy-logo">wurd</div><p>We couldn’t connect. Please try again shortly.</p></div></main>;
   if (authLoading) return <main className="auth-stage"><div className="auth-card"><div className="cozy-logo">wurd</div><p>Getting today ready</p></div></main>;
-  if (isSupabaseConfigured && !user) return <main className="auth-stage"><div className="auth-card sign-in-card"><div className="cozy-logo">wurd</div><h1>Say less.</h1><Button className="google-sign-in" onClick={signIn}><GoogleLogo /> Continue with Google</Button>{appError && <em>{appError}</em>}</div></main>;
-  if (profile && (profile.username.startsWith('wurd_') || !profile.city)) return <main className="auth-stage"><form className="auth-card onboarding-card" onSubmit={saveOnboarding}><div className="cozy-logo">wurd</div><h1>Make it yours.</h1><p>Choose a username and select your city.</p><label htmlFor="onboarding-username">Username</label><Input id="onboarding-username" maxLength={24} value={usernameDraft} onChange={event => { setUsernameDraft(event.target.value); setAppError(''); }} placeholder="your_username" /><label htmlFor="onboarding-city">City</label><CityPicker id="onboarding-city" query={cityDraft} selected={citySelection} onQueryChange={value => { setCityDraft(value); setAppError(''); }} onSelect={setCitySelection} /><Button type="submit" disabled={accountBusy}>{accountBusy ? 'Saving…' : 'Start using wurd'}</Button>{appError && <em>{appError}</em>}</form></main>;
+  if (isSupabaseConfigured && !user) return <main className="auth-stage"><div className="auth-card sign-in-card launch-welcome"><div className="cozy-logo">wurd</div><h1>Say less.</h1><p className="welcome-promise">Your day in one word. A little closer to your people.</p><div className="welcome-example"><small>AN EXAMPLE WURD</small><strong>GROUNDED</strong></div><div className="welcome-steps"><span><b>Today</b> · Share a word. Echo a feeling. Reply with one.</span><span><b>Play</b> · Guess what everyone else will say.</span><span><b>You</b> · Keep your history. Grow with your people.</span></div><Button className="google-sign-in" onClick={signIn}><GoogleLogo /> Continue with Google</Button><PrivacyNote />{appError && <em>{appError}</em>}</div></main>;
+  if (profile && profile.username.startsWith('wurd_')) return <main className="auth-stage"><form className="auth-card onboarding-card" onSubmit={saveOnboarding}><div className="cozy-logo">wurd</div><h1>Make it yours.</h1><p>Choose a username. Add your city if you like.</p><label htmlFor="onboarding-username">Username</label><Input id="onboarding-username" maxLength={24} value={usernameDraft} onChange={event => { setUsernameDraft(event.target.value); setAppError(''); }} placeholder="your_username" /><label htmlFor="onboarding-city">City (optional)</label><CityPicker id="onboarding-city" query={cityDraft} selected={citySelection} onQueryChange={value => { setCityDraft(value); setAppError(''); }} onSelect={setCitySelection} /><Button type="submit" disabled={accountBusy}>{accountBusy ? 'Saving…' : 'Start using wurd'}</Button>{appError && <em>{appError}</em>}</form></main>;
 
-  const realXp = profile?.xp ?? 852 + echoed.length;
+  const realXp = profile?.xp ?? 0;
   const levelTenPreview = isLevelTenPreview();
   const xp = levelTenPreview ? 5380 : realXp;
   const level = levelForXp(xp);
-  const streak = profile?.streak_days ?? 12;
+  const streak = profile?.streak_days ?? 0;
   const activeSubmitted = isSavedWurdActive(submittedAt, clockNow) ? submitted : '';
   const hasPostedToday = isSupabaseConfigured ? history.some(item => item.local_date === dayKey) : Boolean(window.localStorage.getItem(`wurd:daily:${dayKey}`));
   const replacementPreview = import.meta.env.DEV && ['replacement', 'level10'].includes(new URLSearchParams(window.location.search).get('preview') || '');
@@ -1575,23 +1527,23 @@ export default function CozyPreview() {
     my_echo_strength: previewStrength,
   };
   const visibleFeed = levelTenPreview ? [previewWord, ...feed.filter(item => item.id !== previewWord.id)] : feed;
-  const ownEchoes = history.find(item => item.local_date === submittedLocalDate)?.echo_count ?? (activeSubmitted ? 37 + activeSubmitted.length * 11 : 0);
+  const ownEchoes = history.find(item => item.local_date === submittedLocalDate)?.echo_count ?? 0;
   return (
-    <main className={`cozy-stage fixed-app active-${tab} ${(headerSubmitted || tab === 'you') ? 'today-app' : ''}`}><section className="cozy-shell"><BrandHeader tab={tab} submitted={headerSubmitted} submittedAt={submittedAt} now={clockNow} emoji={submittedEmoji} color={submittedColor} wordStyle={submittedWordStyle} animation={submittedAnimation} avatarUrl={level >= 5 ? profilePhotoPreview : null} echoes={ownEchoes} replies={ownFeedWord?.user_id === user?.id && ownFeedWord?.created_at === submittedAt ? ownFeedWord.replies ?? [] : []} repliesLoading={feedLoading} xp={xp} level={level} streak={streak} username={profile?.username} memberSince={profile?.created_at} city={profile?.city} countryCode={profile?.country_code} canReplace={tab === 'today' && canReplace && !replacementMode} onReplace={() => setReplacementStep('explain')} /><div className="cozy-main">
-      {appError && <button className="app-error" onClick={() => setAppError('')}>{appError}</button>}
-      {tab === 'today' && <TodayTab submitted={activeSubmitted} replacementMode={replacementMode} level={level} feed={visibleFeed.filter(item => isWithinTodayWindow(item.created_at, clockNow))} feedLoading={feedLoading} now={clockNow} spokeCount={levelTenPreview ? spokeCount + 1 : spokeCount} feedMode={feedMode} setFeedMode={setFeedMode} setSubmitted={postWord} refreshFeed={async () => { if (!user) { window.location.reload(); return; } setAppError(''); try { await Promise.all([loadAccount(user), loadFeed(feedMode, user)]); } catch (reason) { setAppError(readableError(reason, 'Could not refresh today.')); } }} friendStateFor={friendStateFor} sendFriendRequest={sendFriendRequest} echoStrengths={echoStrengths} echoed={echoed} setEchoStrength={setEchoStrength} currentUserId={user?.id || null} currentUsername={profile?.username || 'you'} />}
-      {tab === 'world' && <WorldTab />}
+    <main className={`cozy-stage fixed-app active-${tab} ${tab !== 'play' ? 'today-app' : ''}`}><section className="cozy-shell"><BrandHeader tab={tab} submitted={headerSubmitted} submittedAt={submittedAt} now={clockNow} emoji={submittedEmoji} color={submittedColor} wordStyle={submittedWordStyle} animation={submittedAnimation} avatarUrl={level >= 5 ? profilePhotoPreview : null} echoes={ownEchoes} replies={ownFeedWord?.user_id === user?.id && ownFeedWord?.created_at === submittedAt ? ownFeedWord.replies ?? [] : []} repliesLoading={feedLoading} xp={xp} level={level} streak={streak} username={profile?.username} memberSince={profile?.created_at} city={activeSubmitted ? (history.find(row => row.created_at === submittedAt)?.city ?? ownFeedWord?.city ?? profile?.city) : profile?.city} countryCode={ownFeedWord?.created_at === submittedAt ? ownFeedWord.country_code : profile?.country_code} canReplace={tab === 'today' && canReplace && !replacementMode} onReplace={() => setReplacementStep('explain')} /><div className="cozy-main">
+      {offline && <p className="offline-banner" role="status">You’re offline. Your draft stays here. Reconnect before posting or sending.</p>}{appError && <button className="app-error" onClick={() => setAppError('')}>{appError}</button>}
+      {tab === 'today' && <TodayTab submitted={activeSubmitted} replacementMode={replacementMode} level={level} feed={visibleFeed.filter(item => isWithinTodayWindow(item.created_at, clockNow))} feedLoading={feedLoading} now={clockNow} spokeCount={visibleFeed.filter(item => isWithinTodayWindow(item.created_at, clockNow)).length + (activeSubmitted ? 1 : 0)} feedMode={feedMode} setFeedMode={setFeedMode} setSubmitted={postWord} refreshFeed={async () => { if (!user) { window.location.reload(); return; } setAppError(''); try { await Promise.all([loadAccount(user), loadFeed(feedMode, user)]); } catch (reason) { setAppError(readableError(reason, 'Could not refresh today.')); } }} friendStateFor={friendStateFor} sendFriendRequest={sendFriendRequest} echoStrengths={echoStrengths} echoed={echoed} setEchoStrength={setEchoStrength} currentUserId={user?.id || null} currentUsername={profile?.username || 'you'} hasPostedToday={hasPostedToday} onAccountChanged={async () => { if (user) await Promise.all([loadConnections(user), loadAccount(user), loadFeed(feedMode,user)]); }} />}
       {tab === 'play' && <Suspense fallback={<p className="play-loading" role="status">Opening the games…</p>}><PlayTab key={user?.id || 'signed-out'} onXpChanged={syncGameXp} /></Suspense>}
-      {tab === 'you' && <YouTab history={history} incomingRequestCount={incomingRequestCount} onOpenPanel={panel => { setAppError(''); setSearchResults([]); setYouPanel(panel); if (panel === 'friends') void loadConnections(user || undefined).catch(reason => setAppError(readableError(reason, 'Could not load friends.'))); }} />}
+      {tab === 'you' && <YouTab history={history} loadEarlier={loadEarlier} hasEarlier={hasEarlier} historyBusy={historyBusy} incomingRequestCount={incomingRequestCount} onOpenPanel={panel => { setAppError(''); setSearchResults([]); setYouPanel(panel); if (panel === 'friends') void loadConnections(user || undefined).catch(reason => setAppError(readableError(reason, 'Could not load friends.'))); }} />}
     </div><nav className="cozy-nav" aria-label="App navigation">{tabs.map(item => {
+      if (item.id === 'play') return <PlayNavButton key={`play-${user?.id || 'local'}`} userId={user?.id || 'local'} active={tab === 'play'} paused={v21Step !== null || youPanel !== null || replacementStep !== null} onOpen={() => setTab('play')} />;
       const locked = item.id === 'world';
       return <button key={item.id} className={`${tab === item.id ? 'active' : ''} ${locked ? 'locked' : ''}`} disabled={locked} title={locked ? 'Coming later' : item.label} onClick={() => setTab(item.id)}><item.icon />{locked && <Lock className="nav-lock" />}<span>{item.label}</span></button>;
-    })}</nav>{profile && user && <YouToolsDialog panel={youPanel} setPanel={setYouPanel} userId={user.id} connections={connections} searchResults={searchResults} searchQuery={searchQuery} onSearchQueryChange={updateFriendSearch} searchPeople={searchPeople} sendFriendRequest={sendFriendRequest} acceptFriend={acceptFriend} declineFriend={declineFriend} unfriend={unfriend} xp={xp} level={level} streak={streak} saveSettings={saveSettings} signOut={signOut} usernameDraft={usernameDraft} setUsernameDraft={setUsernameDraft} cityDraft={cityDraft} setCityDraft={setCityDraft} citySelection={citySelection} setCitySelection={setCitySelection} profilePhoto={profilePhotoPreview} saveProfilePhoto={saveProfilePhoto} removeProfilePhoto={removeProfilePhoto} pushStatus={pushStatus} notificationPreferences={v21Notifications} notificationBusy={notificationBusy} notificationError={notificationError} setNotificationPreferences={setV21Notifications} enableNotifications={turnOnNotifications} saveNotificationPreferences={updateNotificationSettings} disableNotifications={turnOffNotifications} busy={accountBusy} />}
+    })}</nav>{profile && user && <YouToolsDialog panel={youPanel} setPanel={setYouPanel} userId={user.id} connections={connections} searchResults={searchResults} searchQuery={searchQuery} onSearchQueryChange={updateFriendSearch} searchPeople={searchPeople} sendFriendRequest={sendFriendRequest} acceptFriend={acceptFriend} declineFriend={declineFriend} unfriend={unfriend} xp={xp} level={level} streak={streak} saveSettings={saveSettings} signOut={signOut} usernameDraft={usernameDraft} setUsernameDraft={setUsernameDraft} cityDraft={cityDraft} setCityDraft={setCityDraft} citySelection={citySelection} setCitySelection={setCitySelection} profilePhoto={profilePhotoPreview} saveProfilePhoto={saveProfilePhoto} removeProfilePhoto={removeProfilePhoto} pushStatus={pushStatus} notificationPreferences={v21Notifications} notificationBusy={notificationBusy} notificationError={notificationError} setNotificationPreferences={setV21Notifications} enableNotifications={turnOnNotifications} saveNotificationPreferences={updateNotificationSettings} disableNotifications={turnOffNotifications} busy={accountBusy} accountError={appError} onAccountChanged={async () => { if (user) await Promise.all([loadConnections(user),loadAccount(user),loadFeed(feedMode,user)]); }} />}
       <Dialog open={replacementStep !== null} onOpenChange={open => { if (!open) setReplacementStep(null); }}><DialogContent className="replacement-dialog"><DialogHeader><DialogTitle>{replacementStep === 'confirm' ? 'Replace your current Wurd?' : 'A new day has started'}</DialogTitle><DialogDescription>{replacementStep === 'confirm' ? 'Posting a new Wurd will remove your existing active Wurd. This action cannot be undone.' : 'Your current Wurd will remain active until it expires, or you can replace it now with a new Wurd for today.'}</DialogDescription></DialogHeader>{replacementStep === 'confirm' ? <div className="replacement-actions"><Button variant="outline" onClick={() => setReplacementStep(null)}>Keep current Wurd</Button><Button onClick={() => { setReplacementStep(null); setReplacementMode(true); setTab('today'); }}>Replace &amp; post</Button></div> : <div className="replacement-actions"><Button variant="outline" onClick={() => setReplacementStep(null)}>Not now</Button><Button onClick={() => setReplacementStep('confirm')}>Post today&apos;s Wurd</Button></div>}</DialogContent></Dialog>
       <Dialog open={v21Step !== null} onOpenChange={open => { if (!open) setV21Step(null); }}><DialogContent className="v21-preview-dialog">
         {v21Step === 'home' && <><span className="v21-preview-label">V2.1 · 1 OF 2</span><div className="v21-feature-icon app-icon"><img src={`${import.meta.env.BASE_URL}icon-192.png`} alt="Wurd Home Screen icon" /></div><DialogHeader><DialogTitle>Put wurd on your Home Screen.</DialogTitle><DialogDescription>Add it, then open wurd from the new W icon to continue.</DialogDescription></DialogHeader><div className="install-directions"><div><strong>iPhone</strong><span><Share2 /> Share</span><i>→</i><span>Add to Home Screen</span></div><div><strong>Android</strong><span>⋮ Menu</span><i>→</i><span>Install app</span></div></div><div className="replacement-actions"><Button variant="outline" onClick={() => { window.localStorage.setItem('wurd:v21:onboarding', 'done'); setV21Step(null); }}>Not now</Button><Button onClick={() => setV21Step(isInstalledApp() || isV21Preview() ? 'notifications' : 'open-installed')}>It&apos;s on my Home Screen</Button></div></>}
         {v21Step === 'open-installed' && <><span className="v21-preview-label">V2.1 · 1 OF 2</span><div className="v21-feature-icon app-icon"><img src={`${import.meta.env.BASE_URL}icon-192.png`} alt="Wurd Home Screen icon" /></div><DialogHeader><DialogTitle>Open wurd from your Home Screen.</DialogTitle><DialogDescription>Alerts can be turned on after you open the installed W app.</DialogDescription></DialogHeader><Button onClick={() => { window.localStorage.setItem('wurd:v21:onboarding', 'done'); setV21Step(null); }}>Got it</Button></>}
-        {v21Step === 'notifications' && <><span className="v21-preview-label">V2.1 · 2 OF 2</span><div className="v21-feature-icon"><Bell /></div><DialogHeader><DialogTitle>Stay close to your people.</DialogTitle><DialogDescription>Choose what Wurd can tell you about. No daily reminders. No noise.</DialogDescription></DialogHeader><div className="v21-notification-types"><button type="button" className={v21Notifications.requests ? 'active' : ''} aria-pressed={v21Notifications.requests} onClick={() => setV21Notifications(current => ({ ...current, requests: !current.requests }))}><span><UserPlus /></span><div><strong>Friend requests</strong><small>When someone wants to connect.</small></div><i>{v21Notifications.requests && <Check />}</i></button><button type="button" className={v21Notifications.friendWords ? 'active' : ''} aria-pressed={v21Notifications.friendWords} onClick={() => setV21Notifications(current => ({ ...current, friendWords: !current.friendWords }))}><span className="wurd-alert-mark">w</span><div><strong>Friends&apos; Wurds</strong><small>When a friend posts a new Wurd.</small></div><i>{v21Notifications.friendWords && <Check />}</i></button></div>{notificationError && <em className="notification-error">{notificationError}</em>}<div className="replacement-actions"><Button variant="outline" disabled={notificationBusy} onClick={() => { window.localStorage.setItem('wurd:v21:onboarding', 'done'); setV21Step(null); }}>Not now</Button><Button disabled={notificationBusy || (!v21Notifications.requests && !v21Notifications.friendWords)} onClick={() => void turnOnNotifications()}>{notificationBusy ? 'Turning on…' : 'Turn on alerts'}</Button></div></>}
+        {v21Step === 'notifications' && <><span className="v21-preview-label">V2.1 · 2 OF 2</span><div className="v21-feature-icon"><Bell /></div><DialogHeader><DialogTitle>Stay close to your people.</DialogTitle><DialogDescription>Choose what Wurd can tell you about. No daily reminders. No noise.</DialogDescription></DialogHeader><div className="v21-notification-types"><button type="button" className={v21Notifications.requests ? 'active' : ''} aria-pressed={v21Notifications.requests} onClick={() => setV21Notifications(current => ({ ...current, requests: !current.requests }))}><span><UserPlus /></span><div><strong>Friend requests</strong><small>When someone wants to connect.</small></div><i>{v21Notifications.requests && <Check />}</i></button><button type="button" className={v21Notifications.friendWords ? 'active' : ''} aria-pressed={v21Notifications.friendWords} onClick={() => setV21Notifications(current => ({ ...current, friendWords: !current.friendWords }))}><span className="wurd-alert-mark">w</span><div><strong>Friends&apos; Wurds</strong><small>When a friend posts a new Wurd.</small></div><i>{v21Notifications.friendWords && <Check />}</i></button><button type="button" className={v21Notifications.replies ? 'active' : ''} aria-pressed={v21Notifications.replies} onClick={() => setV21Notifications(current => ({ ...current, replies: !current.replies }))}><span><MessageCircle /></span><div><strong>Replies to your Wurd</strong><small>When someone replies to your post.</small></div><i>{v21Notifications.replies && <Check />}</i></button></div>{notificationError && <em className="notification-error">{notificationError}</em>}<div className="replacement-actions"><Button variant="outline" disabled={notificationBusy} onClick={() => { window.localStorage.setItem('wurd:v21:onboarding', 'done'); setV21Step(null); }}>Not now</Button><Button disabled={notificationBusy || (!v21Notifications.requests && !v21Notifications.friendWords && !v21Notifications.replies)} onClick={() => void turnOnNotifications()}>{notificationBusy ? 'Turning on…' : 'Turn on alerts'}</Button></div></>}
         {v21Step === 'complete' && <><span className="v21-preview-label">V2.1</span><div className="v21-feature-icon complete"><Check /></div><DialogHeader><DialogTitle>You&apos;re set.</DialogTitle><DialogDescription>Your selected alerts are on. You can change them later in Settings.</DialogDescription></DialogHeader><Button onClick={() => setV21Step(null)}>Done</Button></>}
       </DialogContent></Dialog>
     </section></main>

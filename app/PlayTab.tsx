@@ -4,6 +4,7 @@ import { commonWurdRequest, gameCountdown, type CommonWurdState } from '../lib/c
 import { menuTimeLeft, normalizeAnswer } from '../lib/category-game';
 import { checkEnglishSpelling } from '../lib/english-spelling';
 import './category-prototype.css';
+import { skipEmptyUnplayedRound } from '../lib/game-round-navigation';
 
 type Review = { original: string; chosen: string; suggestions: string[]; known: boolean; warning?: string };
 
@@ -41,7 +42,13 @@ export default function PlayTab({ onXpChanged }: { onXpChanged: (xp: number) => 
     const id = ++requestId.current;
     setBusy(true); setError('');
     try {
-      const data = await commonWurdRequest('common_wurd_state');
+      const initial = await commonWurdRequest('common_wurd_state');
+      let data = initial;
+      try {
+        data = await skipEmptyUnplayedRound(initial,
+          roundId => commonWurdRequest('acknowledge_common_wurd', { p_round_id: roundId }),
+          () => id === requestId.current);
+      } catch { /* Keep the ended round available if advancing is unavailable. */ }
       if (id === requestId.current) apply(data);
     } catch (reason) {
       if (id === requestId.current) setError(reason instanceof Error ? reason.message : 'Could not load the game. Try again.');
@@ -126,6 +133,7 @@ export default function PlayTab({ onXpChanged }: { onXpChanged: (xp: number) => 
         <span className="category-menu-time">{closed ? 'Ended' : menuTimeLeft(deadline, now)}</span>
       </button>
       {closed && <p className="category-menu-note">Your round has ended. Open the game to see the results.</p>}
+      <details className="game-rules"><summary>How to play</summary><p>Guess the answer most people will choose. Review the spelling, then lock it in. Answers open together at the end of each round.</p><p>If three players choose the same word, all three earn 3 XP. A unique answer earns 1 XP. New rounds start at 3 AM and 3 PM Israel time.</p></details>
     </> : <>
       <div className="category-round">
         <div className="category-countdown" role="timer" aria-label={closed ? 'Round ended' : `${gameCountdown(deadline, now)} remaining, hours, minutes and seconds`}>
@@ -160,7 +168,7 @@ export default function PlayTab({ onXpChanged }: { onXpChanged: (xp: number) => 
         {model.ended && <div className="category-score"><div><span>{model.my_answer ? 'YOU PICKED' : 'YOU SAT THIS ONE OUT'}</span>{model.my_answer && <strong>{model.my_answer.toUpperCase()}</strong>}</div><div><b>+{model.xp_awarded}</b><span>XP</span></div></div>}
       </section>
       {model.ended ? <section className="category-results">
-        <div className="category-section-title"><h2>The people have spoken.</h2><span>{model.answer_count} answers</span></div>
+        <div className="category-section-title"><h2>{model.answer_count ? 'The people have spoken.' : 'A quiet round.'}</h2><span>{model.answer_count} answers</span></div>
         {model.results.length ? <ol>{model.results.map((row, index) => <li key={row.answer} className={row.answer === model.my_answer ? 'your-answer' : ''}>
           <span className="category-rank">{String(index + 1).padStart(2, '0')}</span>
           <div><strong>{row.answer.toUpperCase()}{row.answer === model.my_answer && <small>YOU</small>}</strong><p>{row.usernames.map(name => `@${name}`).join(' · ')}</p><i><b style={{ width: `${row.count / model.answer_count * 100}%` }} /></i></div>

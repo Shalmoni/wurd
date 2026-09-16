@@ -4,6 +4,7 @@ import webpush from 'npm:web-push@3.6.7';
 const allowedOrigins = new Set([
   'http://localhost:3000',
   'http://127.0.0.1:3000',
+  'http://localhost:3001',
   'https://shalmoni.github.io',
 ]);
 
@@ -48,13 +49,13 @@ Deno.serve(async request => {
 
   let input: { event?: string; sourceId?: number };
   try { input = await request.json(); } catch { return json({ error: 'Invalid request' }, 400, origin); }
-  if (!Number.isInteger(input.sourceId) || !['friend_request', 'friend_word'].includes(input.event || '')) {
+  if (!Number.isInteger(input.sourceId) || !['friend_request', 'friend_word', 'wurd_reply'].includes(input.event || '')) {
     return json({ error: 'Invalid notification event' }, 400, origin);
   }
 
   let recipientIds: string[] = [];
   let username = '';
-  let preference: 'friend_requests' | 'friend_words';
+  let preference: 'friend_requests' | 'friend_words' | 'replies';
   let payload: { title: string; body: string; tag: string; url: string };
 
   const profileResult = await admin.from('profiles').select('username').eq('id', actor.id).single();
@@ -74,6 +75,14 @@ Deno.serve(async request => {
       tag: `friend-request-${input.sourceId}`,
       url: '?open=friends',
     };
+  } else if (input.event === 'wurd_reply') {
+    const reply = await admin.from('wurd_replies').select('id,user_id,daily_word_id,created_at').eq('id', input.sourceId).single();
+    if (reply.error || reply.data.user_id !== actor.id || Date.parse(reply.data.created_at) < Date.now() - 86400000) return json({ error: 'Reply not found' }, 404, origin);
+    const word = await admin.from('daily_words').select('user_id,created_at,replaced_at').eq('id', reply.data.daily_word_id).single();
+    if (word.error || word.data.replaced_at || Date.parse(word.data.created_at) < Date.now() - 86400000 || word.data.user_id === actor.id) return json({ error: 'Wurd not available' }, 404, origin);
+    recipientIds = [word.data.user_id];
+    preference = 'replies';
+    payload = { title: 'A reply to your Wurd', body: `@${username} replied to your Wurd.`, tag: `wurd-reply-${input.sourceId}`, url: '?open=replies' };
   } else {
     const word = await admin.from('daily_words').select('id, user_id, created_at, replaced_at').eq('id', input.sourceId).single();
     const isCurrent = word.data && !word.data.replaced_at && new Date(word.data.created_at).getTime() > Date.now() - 24 * 60 * 60 * 1000;
@@ -90,6 +99,12 @@ Deno.serve(async request => {
     };
   }
 
+  if (!recipientIds.length) return json({ sent: 0 }, 200, origin);
+  // Re-check blocks using the caller's identity, not the service role.
+  const caller = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: `Bearer ${token}` } }, auth: { persistSession: false } });
+  const visible = await caller.from('profiles').select('id').in('id', recipientIds);
+  if (visible.error) return json({ error: 'Could not verify recipients' }, 503, origin);
+  recipientIds = visible.data.map(person => person.id);
   if (!recipientIds.length) return json({ sent: 0 }, 200, origin);
   const subscriptions = await admin.from('push_subscriptions').select('id, user_id, endpoint, p256dh, auth_secret').in('user_id', recipientIds).eq(preference, true);
   if (subscriptions.error) return json({ error: 'Could not load devices' }, 500, origin);

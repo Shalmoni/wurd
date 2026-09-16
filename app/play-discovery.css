@@ -1,0 +1,13 @@
+.play-nav-slot { position: relative; min-width: 0; display: flex; }
+.cozy-nav .play-nav-slot > button { width: 100%; }
+.play-discovery-tip { position: absolute; bottom: calc(100% + 14px); left: 50%; transform: translateX(-50%); width: min(290px, calc(100vw - 32px)); box-sizing: border-box; padding: 18px 18px 12px; border: 1px solid #00c98b; border-radius: 20px; background: #edfff7; color: #153e30; box-shadow: 0 8px 28px #153e3024; text-align: left; }
+.play-discovery-tip::after { content: ''; position: absolute; left: calc(50% - 7px); bottom: -8px; width: 14px; height: 14px; background: #edfff7; border-right: 1px solid #00c98b; border-bottom: 1px solid #00c98b; transform: rotate(45deg); }
+.play-discovery-tip strong { font-size: 21px; line-height: 1.2; }
+.play-discovery-tip p { margin: 8px 0 10px; font-size: 16px; line-height: 1.4; }
+.play-discovery-actions { display: flex; justify-content: space-between; gap: 12px; }
+.cozy-nav .play-discovery-actions button { min-height: 44px; padding: 8px 12px; font-size: 15px; font-weight: 600; border-radius: 12px; color: #426655; }
+.cozy-nav .play-discovery-actions button:last-child { background: #00d993; color: #103d2e; }
+.cozy-nav .play-discovery-actions button:focus-visible { outline: 2px solid #153e30; outline-offset: 2px; }
+.cozy-nav .play-discovery-pulse > svg { color: #00b979; border-radius: 50%; animation: play-discovery-pulse 2s ease-out 3; }
+@keyframes play-discovery-pulse { 0%, 100% { box-shadow: 0 0 0 0 #00d99300; } 35% { box-shadow: 0 0 0 9px #00d99330; } 80% { box-shadow: 0 0 0 15px #00d99300; } }
+@media (prefers-reduced-motion: reduce) { .cozy-nav .play-discovery-pulse > svg { animation: none; } }

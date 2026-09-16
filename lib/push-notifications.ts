@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase';
 
-export type NotificationPreferences = { requests: boolean; friendWords: boolean };
+export type NotificationPreferences = { requests: boolean; friendWords: boolean; replies: boolean };
 export type PushStatus = 'unsupported' | 'prompt' | 'denied' | 'enabled';
 
 const publicVapidKey = import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined;
@@ -33,16 +33,16 @@ async function subscription() {
 }
 
 export async function readPushSettings(): Promise<{ status: PushStatus; preferences: NotificationPreferences }> {
-  const defaults = { requests: true, friendWords: true };
+  const defaults = { requests: true, friendWords: true, replies: false };
   if (!supportsPushNotifications()) return { status: 'unsupported', preferences: defaults };
   if (Notification.permission === 'denied') return { status: 'denied', preferences: defaults };
   const current = await subscription();
   if (!current || !supabase) return { status: 'prompt', preferences: defaults };
-  const result = await supabase.from('push_subscriptions').select('friend_requests, friend_words').eq('endpoint', current.endpoint).maybeSingle();
+  const result = await supabase.from('push_subscriptions').select('friend_requests, friend_words, replies').eq('endpoint', current.endpoint).maybeSingle();
   if (result.error) throw result.error;
   return {
-    status: 'enabled',
-    preferences: result.data ? { requests: result.data.friend_requests, friendWords: result.data.friend_words } : defaults,
+    status: result.data ? 'enabled' : 'prompt',
+    preferences: result.data ? { requests: result.data.friend_requests, friendWords: result.data.friend_words, replies: result.data.replies } : defaults,
   };
 }
 
@@ -66,6 +66,7 @@ export async function enablePushNotifications(userId: string, preferences: Notif
     auth_secret: json.keys.auth,
     friend_requests: preferences.requests,
     friend_words: preferences.friendWords,
+    replies: preferences.replies,
     last_seen_at: new Date().toISOString(),
   }, { onConflict: 'endpoint' });
   if (result.error) throw result.error;
@@ -77,6 +78,7 @@ export async function savePushSettings(userId: string, preferences: Notification
   const result = await supabase.from('push_subscriptions').update({
     friend_requests: preferences.requests,
     friend_words: preferences.friendWords,
+    replies: preferences.replies,
     last_seen_at: new Date().toISOString(),
   }).eq('endpoint', current.endpoint).eq('user_id', userId);
   if (result.error) throw result.error;
@@ -92,7 +94,7 @@ export async function disablePushNotifications(userId: string) {
   await current.unsubscribe();
 }
 
-export async function dispatchPushEvent(event: 'friend_request' | 'friend_word', sourceId: number) {
+export async function dispatchPushEvent(event: 'friend_request' | 'friend_word' | 'wurd_reply', sourceId: number) {
   if (!supabase) return;
   const result = await supabase.functions.invoke('send-push', { body: { event, sourceId } });
   if (result.error) console.error('Notification delivery failed', result.error);

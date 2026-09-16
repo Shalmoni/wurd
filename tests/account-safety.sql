@@ -1,0 +1,53 @@
+-- Synthetic users only. Test data and every write roll back.
+begin;
+do $$
+declare a uuid := gen_random_uuid(); b uuid := gen_random_uuid(); c uuid := gen_random_uuid(); w bigint; denied boolean; result jsonb;
+begin
+  insert into auth.users(id,email,raw_user_meta_data) values (a,a::text || '@test.invalid','{}'),(b,b::text || '@test.invalid','{}'),(c,c::text || '@test.invalid','{}');
+  insert into public.daily_words(user_id,local_date,word,timezone) values(b,current_date,'TEST','UTC') returning id into w;
+  assert not has_function_privilege('anon','public.account_tools(text,uuid,bigint,text)','EXECUTE');
+  assert not has_table_privilege('authenticated','private.account_blocks','SELECT,INSERT,UPDATE,DELETE');
+  assert not has_table_privilege('authenticated','private.community_reports','SELECT');
+  assert not exists(select 1 from pg_proc where oid in ('public.account_tools(text,uuid,bigint,text)'::regprocedure,'public.feed_words(date,integer,boolean)'::regprocedure,'public.wurd_reply_thread(bigint)'::regprocedure,'public.my_history_page(timestamptz,integer)'::regprocedure) and prosecdef);
+  perform set_config('request.jwt.claim.sub',a::text,true);
+  perform set_config('role','authenticated',true);
+  assert exists(select 1 from public.feed_words(current_date,0,false) where id=w), 'Pre-post browsing blocked';
+  perform public.account_tools('report',p_word=>w,p_text=>'Spam');
+  perform public.account_tools('feedback',p_text=>'Test feedback');
+  result := public.account_tools('export');
+  assert result->'profile'->>'id'=a::text, 'Wrong export owner';
+  assert jsonb_array_length(result->'reports')=1 and jsonb_array_length(result->'feedback')=1;
+  perform public.account_tools('block',p_target=>b);
+  assert jsonb_array_length(public.account_tools('blocks'))=1;
+  assert not exists(select 1 from public.profiles where id=b), 'Blocked profile exposed';
+  assert not exists(select 1 from public.daily_words where id=w), 'Blocked Wurd exposed';
+  assert not exists(select 1 from public.feed_words(current_date,0,false) where id=w), 'Blocked feed exposed';
+  denied:=false;
+  begin perform public.reply_to_wurd(w,'HI'); exception when raise_exception then denied:=true; end;
+  assert denied, 'Blocked reply accepted';
+  denied:=false;
+  begin perform public.set_echo_strength(w,2::smallint); exception when raise_exception then denied:=true; end;
+  assert denied, 'Blocked echo accepted';
+  denied:=false;
+  begin insert into public.friendships(requester_id,addressee_id) values(a,b); exception when raise_exception then denied:=true; end;
+  assert denied, 'Blocked friend request accepted';
+  perform set_config('request.jwt.claim.sub',b::text,true);
+  assert not exists(select 1 from public.profiles where id=a), 'Reverse block missing';
+  assert jsonb_array_length(public.account_tools('blocks'))=0, 'Leaked incoming block';
+  perform public.account_tools('unblock',p_target=>a);
+  assert not exists(select 1 from public.profiles where id=a), 'Could undo someone else’s block';
+  perform set_config('request.jwt.claim.sub',c::text,true);
+  assert exists(select 1 from public.feed_words(current_date,0,false) where id=w), 'Third user incorrectly blocked';
+  assert public.account_tools('export')->'reports'='[]'::jsonb, 'Other reports leaked';
+  perform set_config('request.jwt.claim.sub',a::text,true);
+  perform public.account_tools('unblock',p_target=>b);
+  assert exists(select 1 from public.feed_words(current_date,0,false) where id=w), 'Unblock failed';
+  perform set_config('role','none',true);
+  -- Verify account cascading against disposable data without using a real account.
+  delete from auth.users where id=a;
+  assert not exists(select 1 from public.profiles where id=a), 'Profile not removed';
+  assert not exists(select 1 from private.community_reports where reporter_id=a), 'Report retained';
+  assert not exists(select 1 from private.product_feedback where user_id=a), 'Feedback retained';
+end;
+$$;
+rollback;
