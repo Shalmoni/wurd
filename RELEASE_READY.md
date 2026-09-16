@@ -33,6 +33,12 @@ English correction, sealed answers and ended-results-to-next-round navigation.
 The fixture and isolated prototype state were checked absent from build assets.
 Real-account mutation and physical-phone push/crop tests were not performed.
 
+Deployment `ce67870` succeeded. Read-only acceptance in the existing live @otsar
+session confirmed the new header and all three main pages, 10 preserved history
+entries, Level 2 with 17/200 XP, the real XP ledger, existing friends, username
+autocomplete and the live beach-category round/countdown. No console errors were
+observed. No Wurd, echo, reply, friend request or game answer was submitted.
+
 ## Release approach
 
 The production app keeps its existing authentication and data services. The isolated
@@ -82,7 +88,8 @@ The full exploratory prototype remains at `?preview=product` in development only
 
 ## Honest limits / operational follow-up
 
-- Authenticated browser acceptance remains to be checked after the owner signs in.
+- Authenticated read-only browser acceptance passed for the deployed redesign
+  (see follow-up above); real-account mutation tests were intentionally not run.
 - Physical iPhone/Android push delivery, keyboard and photo-crop acceptance remain manual QA.
 - Feedback and reports are received in private database queues, not emailed to anyone.
   The app owner needs to review `private.product_feedback` and `private.community_reports`
