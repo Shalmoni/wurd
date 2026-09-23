@@ -5,12 +5,14 @@ import { commonWurdRequest, gameCountdown, type CommonWurdState } from '../lib/c
 import { menuTimeLeft, normalizeAnswer } from '../lib/category-game';
 import { checkEnglishSpelling } from '../lib/english-spelling';
 import { skipEmptyUnplayedRound } from '../lib/game-round-navigation';
+import GameInviteButton from './GameInviteButton';
 
 type Review = { original: string; chosen: string; suggestions: string[]; known: boolean; warning?: string };
 
-export default function PlayTab({ onXpChanged, request = commonWurdRequest }: { onXpChanged: (xp: number) => void; request?: typeof commonWurdRequest }) {
+export default function PlayTab({ onXpChanged, request = commonWurdRequest, invited = false, onInviteOpened }: { onXpChanged: (xp: number) => void; request?: typeof commonWurdRequest; invited?: boolean; onInviteOpened?: () => void }) {
   const [model, setModel] = useState<CommonWurdState | null>(null);
-  const [view, setView] = useState<'menu' | 'game'>('menu');
+  const [view, setView] = useState<'menu' | 'game'>(invited ? 'game' : 'menu');
+  useEffect(() => { if (invited) { setView('game'); onInviteOpened?.(); } }, [invited, onInviteOpened]);
   const [helpOpen, setHelpOpen] = useState(false);
   const [draft, setDraft] = useState('');
   const [review, setReview] = useState<Review | null>(null);
@@ -125,6 +127,7 @@ export default function PlayTab({ onXpChanged, request = commonWurdRequest }: { 
     {view === 'menu' ? <div className="lp-page-title production-play-heading"><span className="lp-kicker">A LITTLE REASON TO COME BACK</span><h1>Play together.</h1><p>Different days. Common ground.</p><button className="lp-icon" onClick={() => void load()} disabled={busy} aria-label="Refresh games"><RefreshCw size={20} /></button></div>
       : <><button className="lp-back" aria-label="Back to games" onClick={() => setView('menu')}><ArrowLeft size={18} /> Games</button><h1 className="lp-game-title">The common wurd.</h1></>}
     {error && <p className="lp-error" role="alert">{error} <button onClick={() => void load()} disabled={busy}>Retry</button></p>}
+    <GameInviteButton />
     {!model && <p role="status">{busy ? 'Opening the games…' : 'The game could not be loaded.'}</p>}
     {model && !round && <p>The next round is being prepared. Check back soon.</p>}
     {model && round && (view === 'menu' ? <>

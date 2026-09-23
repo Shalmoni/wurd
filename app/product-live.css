@@ -60,4 +60,8 @@
 .lp-auth .google-sign-in { font-family: Arial,sans-serif; }
 .lp-auth .google-sign-in svg { width: 20px; height: 20px; }
 .lp-auth .privacy-note { width: auto; height: auto; background: none; }
+.game-invite-button { margin: 0 0 18px; min-height: 44px; }
+.game-invite-dialog p { font: 14px/1.5 system-ui; }
+.game-invite-link { width: 100%; min-width: 0; border: 1px solid #dce9e3; border-radius: 10px; padding: 12px; font: 12px/1.4 system-ui; }
+.game-invite-dialog small[role='status'] { font: 12px/1.4 system-ui; color: #176849; }
 @media(max-width:359px) { .production-dialog.you-tool-dialog { padding: 19px !important; } .live-product .lp-history article { gap: 10px; padding: 16px 12px; } }

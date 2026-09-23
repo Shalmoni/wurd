@@ -31,6 +31,7 @@ import {
   type PushStatus,
 } from '@/lib/push-notifications';
 
+import { isGameInvite, pendingGameInvite, rememberGameInvite, clearGameInvite } from '../lib/game-invite';
 const PlayTab = lazy(() => import('./PlayTab'));
 type Tab = 'today' | 'world' | 'play' | 'you';
 type Scope = 'World' | 'Israel' | 'Nearby';
@@ -895,9 +896,11 @@ const tabs: { id: Tab; label: string; icon: typeof Sun }[] = [
 ];
 
 export default function CozyPreview() {
+  const [gameInvited, setGameInvited] = useState(() => isGameInvite(window.location.search) || pendingGameInvite(window.sessionStorage));
+  const inviteOpened = useCallback(() => { setGameInvited(false); clearGameInvite(window.sessionStorage); }, []);
   const [tab, setTab] = useState<Tab>(() => {
     const params = new URLSearchParams(window.location.search);
-    return params.get('tab') === 'play' || params.get('preview') === 'play' ? 'play' : 'today';
+    return gameInvited || params.get('tab') === 'play' || params.get('preview') === 'play' ? 'play' : 'today';
   });
   const [dayKey, setDayKey] = useState(localDayKey);
   const [submitted, setSubmittedState] = useState('');
@@ -1170,7 +1173,7 @@ export default function CozyPreview() {
     setSubmittedLocalDate(active?.localDate || (word ? dayKey : null));
     if (savedPost) { try { const post = JSON.parse(savedPost) as PostWordInput; setSubmittedEmoji(post.emoji); setSubmittedColor(post.color); setSubmittedWordStyle(post.wordStyle || 'bold'); setSubmittedAnimation(post.animation || 'still'); } catch { /* supports older local saves */ } }
     try { setEchoed(savedEchoes ? JSON.parse(savedEchoes) : []); } catch { setEchoed([]); }
-    if (!word) setTab('today');
+    if (!word && !gameInvited) setTab('today');
   }, [dayKey]);
 
   async function postWord(post: PostWordInput) {
@@ -1254,6 +1257,7 @@ export default function CozyPreview() {
   async function signIn() {
     if (!supabase) return;
     setAppError('');
+    if (gameInvited) rememberGameInvite(window.sessionStorage);
     const redirectTo = `${window.location.origin}${window.location.pathname}`;
     const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo } });
     if (error) setAppError(error.message);
@@ -1490,7 +1494,7 @@ export default function CozyPreview() {
       {tab === 'today' && headerSubmitted && <CurrentWurd word={headerSubmitted} submittedAt={submittedAt} now={clockNow} emoji={submittedEmoji} color={submittedColor} wordStyle={submittedWordStyle} animation={submittedAnimation} city={history.find(row => row.created_at === submittedAt)?.city ?? ownFeedWord?.city ?? profile?.city} countryCode={ownFeedWord?.created_at === submittedAt ? ownFeedWord.country_code : profile?.country_code} echoes={ownEchoes} replies={ownFeedWord?.user_id === user?.id && ownFeedWord?.created_at === submittedAt ? ownFeedWord.replies ?? [] : []} loading={feedLoading} canReplace={canReplace && !replacementMode} onReplace={() => setReplacementStep('explain')} />}
       {offline && <p className="offline-banner" role="status">You’re offline. Your draft stays here. Reconnect before posting or sending.</p>}{appError && <button className="app-error" onClick={() => setAppError('')}>{appError}</button>}
       {tab === 'today' && <TodayTab onPlay={() => setTab('play')} onFindFriends={() => { setSearchQuery(''); setSearchResults([]); setYouPanel('friends'); }} submitted={activeSubmitted} replacementMode={replacementMode} level={level} feed={visibleFeed.filter(item => isWithinTodayWindow(item.created_at, clockNow))} feedLoading={feedLoading} now={clockNow} spokeCount={visibleFeed.filter(item => isWithinTodayWindow(item.created_at, clockNow)).length + (activeSubmitted && feedMode !== 'Friends' ? 1 : 0)} feedMode={feedMode} setFeedMode={setFeedMode} setSubmitted={postWord} refreshFeed={async () => { if (!user) { window.location.reload(); return; } setAppError(''); try { await Promise.all([loadAccount(user), loadFeed(feedMode, user)]); } catch (reason) { setAppError(readableError(reason, 'Could not refresh today.')); } }} friendStateFor={friendStateFor} sendFriendRequest={sendFriendRequest} echoStrengths={echoStrengths} echoed={echoed} setEchoStrength={setEchoStrength} currentUserId={user?.id || null} currentUsername={profile?.username || 'you'} hasPostedToday={hasPostedToday} onAccountChanged={async () => { if (user) await Promise.all([loadConnections(user), loadAccount(user), loadFeed(feedMode,user)]); }} />}
-      {tab === 'play' && <Suspense fallback={<p className="play-loading" role="status">Opening the games…</p>}><PlayTab key={user?.id || 'signed-out'} onXpChanged={syncGameXp} /></Suspense>}
+      {tab === 'play' && <Suspense fallback={<p className="play-loading" role="status">Opening the games…</p>}><PlayTab key={user?.id || 'signed-out'} onXpChanged={syncGameXp} invited={gameInvited} onInviteOpened={inviteOpened} /></Suspense>}
       {tab === 'you' && <YouTab username={profile?.username} memberSince={profile?.created_at} avatarUrl={level >= 5 ? profilePhotoPreview : null} onToday={() => setTab('today')} history={history} loadEarlier={loadEarlier} hasEarlier={hasEarlier} historyBusy={historyBusy} incomingRequestCount={incomingRequestCount} onOpenPanel={panel => { setAppError(''); setSearchQuery(''); setSearchResults([]); setYouPanel(panel); if (panel === 'friends') void loadConnections(user || undefined).catch(reason => setAppError(readableError(reason, 'Could not load friends.'))); }} />}
     </div><nav className="lp-nav" aria-label="App navigation">{tabs.map(item => {
       if (item.id === 'play') return <PlayNavButton inlineIntroduction key={`play-${user?.id || 'local'}`} userId={user?.id || 'local'} active={tab === 'play'} paused={v21Step !== null || youPanel !== null || replacementStep !== null} onOpen={() => setTab('play')} />;
