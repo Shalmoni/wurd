@@ -152,7 +152,7 @@ export default function PlayTab({ onXpChanged, request = commonWurdRequest, invi
           <h3>{review.suggestions.length ? 'Did you mean?' : 'Ready to lock it in?'}</h3>
           {review.warning && <p>{review.warning}</p>}
           {!review.known && !review.suggestions.length && !review.warning && <p>We don’t recognize this spelling. You can keep it or go back.</p>}
-          <div className="lp-chips">{[...new Set([...review.suggestions.slice(0, 3), review.original])].map(word => <button type="button" key={word} disabled={busy} aria-pressed={word === review.chosen} onClick={() => setReview({ ...review, chosen: word })}>{word}{word === review.original ? ' · original' : ''}</button>)}</div>
+          <div className="lp-chips">{[...new Set([...review.suggestions.slice(0, 3), review.original])].map(word => <button type="button" key={word} disabled={busy} aria-pressed={word === review.chosen} onClick={() => setReview({ ...review, chosen: word })}>{word}</button>)}</div>
           <p>You can’t change it after confirming.</p><div className="lp-actions"><button className="lp-action secondary" type="button" disabled={busy} onClick={() => setReview(null)}>Go back</button><button className="lp-action" type="button" disabled={busy} onClick={() => void act('submit_common_wurd')}>{busy ? 'Saving…' : 'Lock it in'}</button></div>
         </div>)}
         {model.my_answer && <div className="lp-sealed"><span><Check size={15} /> {closed ? 'YOU PICKED' : 'YOUR ANSWER IS SEALED'}</span><strong>{model.my_answer.toUpperCase()}</strong></div>}

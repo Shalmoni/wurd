@@ -40,4 +40,6 @@ test('Play uses the new design with real round submissions and no simulated reve
   assert.ok(play.includes('model.xp_awarded'));
   assert.ok(!play.includes('revealGame('));
   assert.ok(!play.includes('gameSamples'));
+  assert.ok(!play.includes(' · original'));
+  assert.ok(play.includes('review.suggestions.slice(0, 3), review.original'));
 });
